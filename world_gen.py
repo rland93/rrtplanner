@@ -9,10 +9,6 @@ class ObstacleGenerator(object):
     def __init__(self, superworld):
         self.superworld = superworld
         self.obstacles = self.generate_subdivisions(obs=True)
-        self.free_space = self.generate_subdivisions(obs=False)
-        self.free_space_list = np.argwhere(self.superworld == 0)
-        self.obs_rtree = self.get_rtree(self.obstacles)
-        self.fre_rtree = self.get_rtree(self.free_space)
 
     def generate_subdivisions(self, obs=True):
         ax0 = 0
