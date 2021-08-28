@@ -1,20 +1,23 @@
 from matplotlib.collections import PatchCollection
 import numpy as np
 from matplotlib.patches import Rectangle
-from perlin_noise.perlin_noise import PerlinNoise
-import rtree, uuid
+import uuid
+from perlin_numpy import generate_perlin_noise_3d
+import matplotlib.pyplot as plt
+from matplotlib import animation
 
 
 class ObstacleGenerator(object):
-    def __init__(self, superworld):
-        self.superworld = superworld
-        self.obstacles = self.generate_subdivisions(obs=True)
+    def __init__(self, world, subdivide=False):
+        self.world = world
+        if subdivide:
+            self.obstacles = self.generate_subdivisions(obs=True)
 
     def generate_subdivisions(self, obs=True):
         ax0 = 0
         ay0 = 0
-        ax1 = self.superworld.shape[0]
-        ay1 = self.superworld.shape[1]
+        ax1 = self.world.shape[0]
+        ay1 = self.world.shape[1]
         sw = []
         self.subdivide(ax0, ay0, ax1, ay1, sw=sw, obs=obs)
         return sw
@@ -22,7 +25,7 @@ class ObstacleGenerator(object):
     def subdivide(self, x0, y0, x1, y1, sw=[], obs=True):
         """Recursive quadtree subdivision algorithm"""
         if x1 - x0 == 1 and y1 - y0 == 1:
-            if self.superworld[x0:x1, y0:y1] == obs:
+            if self.world[x0:x1, y0:y1] == obs:
                 sw.append((x0, y0, x1, y1))
             return
 
@@ -36,7 +39,7 @@ class ObstacleGenerator(object):
         qD = w2 + x0, h2 + y0, w + x0, h + y0  # bottom right
 
         for (qx0, qy0, qx1, qy1) in (qA, qB, qC, qD):
-            subworld = self.superworld[qx0:qx1, qy0:qy1]
+            subworld = self.world[qx0:qx1, qy0:qy1]
             if obs:
                 if np.all(subworld):
                     homog = True
@@ -74,29 +77,50 @@ class ObstacleGenerator(object):
 
     def get_rand_start_end(self, bias=True):
         """if bias, prefer points far away from one another"""
-        free_space = np.argwhere(self.superworld == 0)
+        free_space = np.argwhere(self.world == 0)
         if bias == True:
             start_i = int(np.random.beta(a=0.5, b=5) * free_space.shape[0])
             end_i = int(np.random.beta(a=5, b=0.5) * free_space.shape[0])
         else:
             start_i = np.random.choice(free_space.shape[0])
             end_i = np.random.choice(free_space.shape[0])
-        start = free_space[start_i, :] + np.array((0.5, 0.5))
-        end = free_space[end_i, :] + np.array((0.5, 0.5))
+        start = free_space[start_i, :]
+        end = free_space[end_i, :]
         return start, end
 
-    def get_rtree(self, obstacles=None):
-        stream = [(uuid.uuid4(), o, None) for o in obstacles]
-        p = rtree.index.Property(dimension=2)
-        return rtree.index.Index(stream, properties=p, interleaved=True)
+
+def make_perlin_world(shape, scale, octaves=1, seed=None, thresh=0.3):
+    t, w, h = shape
+    ts, ws, hs = scale
+    noise1 = generate_perlin_noise_3d(
+        (t, w, h), (ts, ws, hs), tileable=(True, True, True)
+    )
+    noise2 = generate_perlin_noise_3d(
+        (t, w, h), (ts, ws * 2, hs * 2), tileable=(True, True, True)
+    )
+    noise = (noise1 + noise2) / 2
+    noise = (noise - np.min(noise)) / (np.max(noise) - np.min(noise))
+    return np.where(noise < thresh, 1, 0)
 
 
-def make_perlin_world(w, h, octaves=5, seed=None, thresh=0.3):
-    # create noise function
-    noise = PerlinNoise(octaves=5, seed=seed)
-    # create perlin world
-    world = np.array([[noise([i / w, j / h]) for j in range(h)] for i in range(w)])
-    # scale world to [0, 1]
-    world = (world - np.min(world)) / (np.max(world) - np.min(world))
-    # binary threshold on world
-    return np.where(world > thresh, 0, 1)
+def get_rand_start_end(world, bias=True):
+    """if bias, prefer points far away from one another"""
+    free_space = np.argwhere(world == 0)
+    if bias == True:
+        start_i = int(np.random.beta(a=0.5, b=5) * free_space.shape[0])
+        end_i = int(np.random.beta(a=5, b=0.5) * free_space.shape[0])
+    else:
+        start_i = np.random.choice(free_space.shape[0])
+        end_i = np.random.choice(free_space.shape[0])
+    start = free_space[start_i, :]
+    end = free_space[end_i, :]
+    return start, end
+
+
+def animate_perlin_world(world):
+    fig = plt.figure()
+    images = [
+        [plt.imshow(layer, cmap="gray", interpolation="lanczos", animated=True)]
+        for layer in world
+    ]
+    return animation.ArtistAnimation(fig, images, interval=50, blit=True)
