@@ -9,14 +9,14 @@ import copy
 
 if __name__ == "__main__":
     tworld = world_gen.make_perlin_world(
-        (256, 128, 128), (4, 4, 4), 5, seed=92103, thresh=0.4
+        (12, 128, 128), (4, 4, 4), 5, seed=92103, thresh=0.4
     )
 
     def animate(worlds, Ts, poss):
         print(worlds.shape[0], len(Ts), len(poss))
         assert worlds.shape[0] == len(Ts)
         assert worlds.shape[0] == len(poss)
-        fig, ax = plt.subplots(figsize=(10, 10))
+        fig, ax = plt.subplots(figsize=(6, 6))
 
         sc = plt.scatter([], [])
         ln = LineCollection([])
@@ -47,24 +47,17 @@ if __name__ == "__main__":
 
         return animation.FuncAnimation(fig, anim, frames=frames, interval=50, blit=True)
 
-    rrt = rrt.RRTx(800, tworld[0])
-    start, goal = rrt.get_rand_start_end()
-
-    T, start, end = rrt.build_rrt(start, goal)
-    pos = {}
-    for n in T.nodes:
-        pos[n] = T.nodes[n]["point"]
+    start, goal = rrt.get_rand_start_end(tworld[0])
+    rrta = rrt.RRTStar_Adaptive(800, tworld[0], 10, start, goal)
 
     Ts = []
     poss = []
 
-    for new_world in tworld:
-        rrt.update_rrt(new_world)
-        Ts.append(copy.deepcopy(rrt.T))
-        pos = {}
-        for n in T.nodes:
-            pos[n] = T.nodes[n]["point"]
-        poss.append(pos)
+    for world in tworld:
+        rrta.resample(new_world=world)
+        Ts.append(copy.deepcopy(rrta.T))
+        poss.append(rrta.get_pos())
+        rrta.update_bot_pos()
 
     anim = animate(tworld, Ts, poss)
     plt.show()
