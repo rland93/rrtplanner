@@ -1,7 +1,3 @@
-from itertools import permutations
-from matplotlib.pyplot import delaxes, psd
-from math import floor
-from networkx.algorithms.shortest_paths.unweighted import predecessor
 from networkx.generators.geometric import euclidean
 from scipy.spatial.distance import euclidean
 import numpy as np
@@ -10,6 +6,8 @@ import uuid
 from tqdm import tqdm
 import networkx as nx
 from collections import deque
+from typing import Union
+import matplotlib.pyplot as plt
 
 
 def get_rand_start_end(world, bias=True):
@@ -40,6 +38,14 @@ def points_on_line(start, end, res):
 
 def dotself(u):
     return np.dot(u, u)
+
+
+def make_pos(T: nx.DiGraph) -> dict:
+    """keys are nodes, values are positions"""
+    pos = {}
+    for n in T.nodes:
+        pos[n] = T.nodes[n]["point"]
+    return pos
 
 
 class RRT(object):
@@ -149,7 +155,10 @@ class RRT(object):
             end_node = uuid.uuid4()
             T.add_node(end_node, point=end_point, active=True)
             T.add_edge(
-                v_nearest, end_node, dist=self.dist_nodes(end_node, v_nearest, T)
+                v_nearest,
+                end_node,
+                dist=self.dist_nodes(end_node, v_nearest, T),
+                active=True,
             )
         else:
             print(
@@ -180,12 +189,14 @@ class RRTStandard(RRT):
                 new_node = uuid.uuid4()
                 T.add_node(new_node, point=x_new, active=True)
                 T.add_edge(
-                    v_nearest, new_node, dist=self.dist_nodes(v_nearest, new_node, T)
+                    v_nearest,
+                    new_node,
+                    dist=self.dist_nodes(v_nearest, new_node, T),
+                    active=True,
                 )
             pts_added.add(rand_idx)
 
         end_node = self.get_end_node(end_point, T)
-
         return T, start_node, end_node
 
 
@@ -496,3 +507,140 @@ class RRTStar(RRT):
         end_node = self.get_end_node(end_point, T)
 
         return T, start_node, end_node
+
+
+class RRTa(object):
+    def __init__(self, start, goal, k, dx):
+        self.start = start
+        self.goal = goal
+        self.k = k
+        self.dx = dx
+
+    def get_end_node(self, T, world, end_point):
+        v_nearest = self.nearest(T, end_point)[0]
+        if not self.collision_check(T, world, v_nearest, end_point):
+            end_node = uuid.uuid4()
+            T.add_node(end_node, point=end_point, active=True)
+            T.add_edge(
+                v_nearest,
+                end_node,
+                dist=self.dist_nodes(T, end_node, v_nearest),
+                active=True,
+            )
+        else:
+            print("could not find obstacle-free to end point.")
+            end_node = v_nearest
+        return end_node
+
+    def get_cost(self, T, v, x=None):
+        if x is None:
+            return T.nodes[v]["cost"]
+        else:
+            dist = euclidean(T.nodes[v]["point"], x)
+            return T.nodes[v]["cost"] + dist
+
+    def nearest(self, T: nx.DiGraph, x: np.array) -> list:
+        def distance(u: uuid.UUID):
+            x1 = T.nodes[u]["point"]
+            x2 = x
+            return euclidean(x1, x2)
+
+        return sorted([n for n in T.nodes], key=distance)
+
+    def dist_nodes(self, T, u, v):
+        p1 = T.nodes[u]["point"]
+        p2 = T.nodes[v]["point"]
+        return euclidean(p1, p2)
+
+    def collision_check(self, T: nx.DiGraph, world, v1, v2) -> bool:
+        if type(v1) == np.ndarray:
+            x0 = v1[0]
+            y0 = v1[1]
+        elif type(v1) == uuid.UUID:
+            x0 = T.nodes[v1]["point"][0]
+            y0 = T.nodes[v1]["point"][1]
+        else:
+            raise TypeError("v1")
+        if type(v2) == np.ndarray:
+            x1 = v2[0]
+            y1 = v2[1]
+        elif type(v2) == uuid.UUID:
+            x1 = T.nodes[v2]["point"][0]
+            y1 = T.nodes[v2]["point"][1]
+        else:
+            raise TypeError("v2")
+
+        dx = abs(x1 - x0)
+        if x0 < x1:
+            sx = 1
+        else:
+            sx = -1
+
+        dy = -abs(y1 - y0)
+        if y0 < y1:
+            sy = 1
+        else:
+            sy = -1
+        err = dx + dy
+
+        while True:
+            if x0 == x1 and y0 == y1:
+                return False
+            # compare
+            if world[x0, y0] == 1:
+                return True
+            e2 = 2 * err
+            if e2 >= dy:
+                err += dy
+                x0 += sx
+            if e2 <= dx:
+                err += dx
+                y0 += sy
+
+    def near(self, T, p, r):
+        """Get nodes within `r` of point `p`."""
+        r2 = r * r
+        within = []
+        for n in T.nodes:
+            if dotself(T.nodes[n]["point"] - p) < r2:
+                within.append(n)
+        return within
+
+    def make(self, world: np.array):
+        free = np.argwhere(world == 0)
+        T = nx.DiGraph()
+        start_node = uuid.uuid4()
+        T.add_node(start_node, point=self.start, active=True)
+        k = 0
+        tries = 0
+        while k < self.k:
+            if tries > self.k * 3:
+                break
+            rand_idx = np.random.choice(free.shape[0])
+            x_rand = free[rand_idx]
+            x_new = x_rand
+            v_nearest = self.nearest(T, x_new)[0]
+            if not self.collision_check(T, world, v_nearest, x_new):
+                new_node = uuid.uuid4()
+                T.add_node(new_node, point=x_new, active=True)
+                T.add_edge(
+                    v_nearest,
+                    new_node,
+                    dist=self.dist_nodes(T, v_nearest, new_node),
+                    active=True,
+                )
+                k += 1
+            tries += 1
+        end_node = self.get_end_node(T, world, self.goal)
+        return T, start_node, end_node
+
+    def set_start(self, start):
+        self.start = start
+    
+    def set_goal(self, goal):
+        self.goal = goal
+
+    def path(self, T, start, end):
+        node_path = nx.shortest_path(T, source=start, target=end, weight="dist")
+        point_path = np.array([T.nodes[n]["point"] for n in node_path])
+        return point_path
