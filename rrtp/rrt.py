@@ -1,4 +1,6 @@
+from sys import _xoptions
 from networkx.generators.geometric import euclidean
+from numpy.typing import _128Bit
 from scipy.spatial.distance import euclidean
 import numpy as np
 from . import world_gen
@@ -8,6 +10,18 @@ import networkx as nx
 from collections import deque
 from typing import Union
 import matplotlib.pyplot as plt
+
+
+def dotself(u):
+    return np.dot(u, u)
+
+
+def make_pos(T: nx.DiGraph) -> dict:
+    """keys are nodes, values are positions"""
+    pos = {}
+    for n in T.nodes:
+        pos[n] = T.nodes[n]["point"]
+    return pos
 
 
 def get_rand_start_end(world, bias=True):
@@ -24,6 +38,8 @@ def get_rand_start_end(world, bias=True):
     return start, end
 
 
+'''
+
 def points_on_line(start, end, res):
     v = end - start
     # unit vector pointing from start to end
@@ -36,16 +52,6 @@ def points_on_line(start, end, res):
         yield tuple(start + pvec * (k + 1) * res)
 
 
-def dotself(u):
-    return np.dot(u, u)
-
-
-def make_pos(T: nx.DiGraph) -> dict:
-    """keys are nodes, values are positions"""
-    pos = {}
-    for n in T.nodes:
-        pos[n] = T.nodes[n]["point"]
-    return pos
 
 
 class RRT(object):
@@ -507,18 +513,26 @@ class RRTStar(RRT):
         end_node = self.get_end_node(end_point, T)
 
         return T, start_node, end_node
+'''
 
 
-class RRTa(object):
-    def __init__(self, start, goal, k, dx):
+class RRT(object):
+    def __init__(self, start, goal, k):
         self.start = start
         self.goal = goal
         self.k = k
-        self.dx = dx
+
+    def nearest_nodes(self, T: nx.DiGraph, x: np.array) -> list:
+        def distance(u: uuid.UUID):
+            x1 = T.nodes[u]["point"]
+            x2 = x
+            return dotself(x1 - x2)
+
+        return sorted([n for n in T.nodes], key=distance)
 
     def get_end_node(self, T, world, end_point):
-        v_nearest = self.nearest(T, end_point)[0]
-        if not self.collision_check(T, world, v_nearest, end_point):
+        v_nearest = self.nearest_nodes(T, end_point)[0]
+        if not self.collision(T, world, v_nearest, end_point):
             end_node = uuid.uuid4()
             T.add_node(end_node, point=end_point, active=True)
             T.add_edge(
@@ -528,31 +542,15 @@ class RRTa(object):
                 active=True,
             )
         else:
-            print("could not find obstacle-free to end point.")
             end_node = v_nearest
         return end_node
-
-    def get_cost(self, T, v, x=None):
-        if x is None:
-            return T.nodes[v]["cost"]
-        else:
-            dist = euclidean(T.nodes[v]["point"], x)
-            return T.nodes[v]["cost"] + dist
-
-    def nearest(self, T: nx.DiGraph, x: np.array) -> list:
-        def distance(u: uuid.UUID):
-            x1 = T.nodes[u]["point"]
-            x2 = x
-            return euclidean(x1, x2)
-
-        return sorted([n for n in T.nodes], key=distance)
 
     def dist_nodes(self, T, u, v):
         p1 = T.nodes[u]["point"]
         p2 = T.nodes[v]["point"]
         return euclidean(p1, p2)
 
-    def collision_check(self, T: nx.DiGraph, world, v1, v2) -> bool:
+    def collision(self, T: nx.DiGraph, world, v1, v2) -> bool:
         if type(v1) == np.ndarray:
             x0 = v1[0]
             y0 = v1[1]
@@ -582,7 +580,6 @@ class RRTa(object):
         else:
             sy = -1
         err = dx + dy
-
         while True:
             if x0 == x1 and y0 == y1:
                 return False
@@ -606,6 +603,22 @@ class RRTa(object):
                 within.append(n)
         return within
 
+    def set_start(self, start):
+        self.start = start
+
+    def set_goal(self, goal):
+        self.goal = goal
+
+    def path(self, T, start, end):
+        node_path = nx.shortest_path(T, source=start, target=end, weight="dist")
+        point_path = np.array([T.nodes[n]["point"] for n in node_path])
+        return point_path
+
+
+class RRTa(RRT):
+    def __init__(self, start, goal, k):
+        super().__init__(start, goal, k)
+
     def make(self, world: np.array):
         free = np.argwhere(world == 0)
         T = nx.DiGraph()
@@ -619,8 +632,8 @@ class RRTa(object):
             rand_idx = np.random.choice(free.shape[0])
             x_rand = free[rand_idx]
             x_new = x_rand
-            v_nearest = self.nearest(T, x_new)[0]
-            if not self.collision_check(T, world, v_nearest, x_new):
+            v_nearest = self.nearest_nodes(T, x_new)[0]
+            if not self.collision(T, world, v_nearest, x_new):
                 new_node = uuid.uuid4()
                 T.add_node(new_node, point=x_new, active=True)
                 T.add_edge(
@@ -634,13 +647,66 @@ class RRTa(object):
         end_node = self.get_end_node(T, world, self.goal)
         return T, start_node, end_node
 
-    def set_start(self, start):
-        self.start = start
-    
-    def set_goal(self, goal):
-        self.goal = goal
 
-    def path(self, T, start, end):
-        node_path = nx.shortest_path(T, source=start, target=end, weight="dist")
-        point_path = np.array([T.nodes[n]["point"] for n in node_path])
-        return point_path
+class RRTaStar(RRT):
+    def __init__(self, start, goal, k, dx):
+        super().__init__(start, goal, k)
+        self.dx = dx
+
+    def get_cost(self, T, v, x=None):
+        if x is None:
+            return T.nodes[v]["cost"]
+        else:
+            dist = euclidean(T.nodes[v]["point"], x)
+            return T.nodes[v]["cost"] + dist
+
+    def make(self, world: np.array):
+        free = np.argwhere(world == 0)
+        T = nx.DiGraph()
+        startn = uuid.uuid4()
+        T.add_node(startn, point=self.start, active=True, cost=0.0)
+        k = 0
+        tries = 0
+        while k < self.k:
+            k += 1
+            tries += 1
+            if tries > self.k * 2:
+                break
+            rand_idx = np.random.choice(free.shape[0])
+            x = free[rand_idx]
+            v_nearest = self.nearest_nodes(T, x)[0]
+            if not self.collision(T, world, v_nearest, x):
+                newn = uuid.uuid4()
+                # get minimum cost paths within radius
+                nodes_near = self.near(T, x, self.dx)
+                v_min = v_nearest
+                c_min = self.get_cost(T, v_nearest, x)
+                for nearby in nodes_near:
+                    coll = self.collision(T, world, nearby, x)
+                    cost = self.get_cost(T, nearby, x)
+                    if (not coll) and (cost < c_min):
+                        v_min = nearby
+                        c_min = cost
+                # rewire the tree
+                dist = euclidean(T.nodes[v_min]["point"], x)
+                # add new node
+                T.add_node(
+                    newn,
+                    point=x,
+                    cost=self.get_cost(T, v_min, x=x),
+                    active=True,
+                )
+                # add new edge
+                T.add_edge(v_min, newn, dist=dist, active=True)
+                for nearby in nodes_near:
+                    coll = not self.collision(T, world, nearby, x)
+                    nearby_pt = T.nodes[nearby]["point"]
+                    cost = self.get_cost(T, newn) + self.get_cost(T, newn, nearby_pt)
+                    if coll and cost < self.get_cost(T, nearby):
+                        v_parent = next(T.predecessors(nearby), None)
+                        if v_parent is not None:
+                            dist = self.dist_nodes(T, nearby, newn)
+                            T.add_edge(newn, nearby, dist=dist, active=True)
+                            T.remove_edge(v_parent, nearby)
+        endn = self.get_end_node(T, world, self.goal)
+        return T, startn, endn
