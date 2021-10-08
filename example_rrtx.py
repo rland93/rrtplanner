@@ -1,13 +1,11 @@
 from networkx.generators.geometric import euclidean
-from rrtp import world_gen, rrt
+from rrtpp import world_gen, rrt
 import matplotlib.pyplot as plt
 from matplotlib import cm
 import numpy as np
 from matplotlib import animation
 from matplotlib.collections import LineCollection
 from matplotlib.pyplot import Circle
-import copy
-import networkx as nx
 
 if __name__ == "__main__":
 
@@ -59,10 +57,10 @@ if __name__ == "__main__":
         )
 
     tworld = world_gen.make_perlin_world(
-        (64, 128, 128), (2, 4, 4), 5, seed=92103, thresh=0.4
+        (1024, 256, 256), (16, 4, 4), 5, seed=92103, thresh=0.4
     )
     start, goal = rrt.get_rand_start_end(tworld[0])
-    rrta = rrt.RRTaStar(start, goal, 250, 60)
+    rrta = rrt.RRTstar(start, goal, 250, 60)
 
     Ts = []
     poss = []
@@ -70,7 +68,7 @@ if __name__ == "__main__":
     positions = []
     goals = []
 
-    velocity = 7
+    velocity = 6
     goal_rad = 10
 
     for world in tworld:
@@ -95,4 +93,4 @@ if __name__ == "__main__":
 
     anim = animate(tworld, Ts, poss, paths, positions, goals, goal_rad, start, goal)
     plt.show()
-    anim.save("./fly_RRTSTAR.mp4")
+    anim.save("./fly_RRTSTAR2.mp4")
