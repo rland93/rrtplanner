@@ -1,7 +1,6 @@
 from matplotlib.collections import PatchCollection
 import numpy as np
 from matplotlib.patches import Rectangle
-import uuid
 from perlin_numpy import generate_perlin_noise_3d
 import matplotlib.pyplot as plt
 from matplotlib import animation

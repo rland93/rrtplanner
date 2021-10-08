@@ -4,6 +4,7 @@ from matplotlib.pyplot import Circle
 import matplotlib.pyplot as plt
 from matplotlib import animation
 from scipy.spatial.distance import euclidean
+from matplotlib import cm
 
 from rrtpp import world_gen
 from rrtpp import rrt
@@ -65,7 +66,7 @@ def make_animation(
     dx: int,
     movie_file: str = "./animation.mp4",
 ):
-    worldmovespeed = int(frames / 32) * worldspeed
+    worldmovespeed = max(int(frames / 32) * worldspeed, 1)
     tworld = world_gen.make_perlin_world(
         (frames, *world_size), (worldmovespeed, 4, 4), 5, thresh=0.37
     )

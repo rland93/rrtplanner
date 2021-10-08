@@ -1,13 +1,9 @@
-from networkx.generators.geometric import euclidean
 from scipy.spatial.distance import euclidean
 import numpy as np
-from . import world_gen
 import uuid
-from tqdm import tqdm
 import networkx as nx
 from collections import deque
 from typing import Union
-import matplotlib.pyplot as plt
 from typing import Union
 
 
