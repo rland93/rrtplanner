@@ -5,24 +5,27 @@ from matplotlib import cm
 import numpy as np
 from matplotlib import animation
 from matplotlib.collections import LineCollection
+from matplotlib.pyplot import Circle
 import copy
 import networkx as nx
 
 if __name__ == "__main__":
 
-    def animate(worlds, Ts, poss, paths, positions, goals, start, end):
+    def animate(worlds, Ts, poss, paths, positions, goals, goal_rad, start, end):
         print(worlds.shape[0], len(Ts), len(poss))
         assert worlds.shape[0] == len(Ts)
         assert worlds.shape[0] == len(poss)
-        fig, ax = plt.subplots(figsize=(6, 6))
+        fig, ax = plt.subplots(figsize=(16, 9))
         # sc = ax.scatter([], [], marker=".")
-        ln = LineCollection([], colors="grey")
+        ln = LineCollection([], colors="silver")
         im = ax.imshow(worlds[0, :, :].T, cmap=cm.get_cmap("Greys"), origin="lower")
         ax.add_collection(ln)
         ax.set_ylim(0, worlds.shape[1])
         ax.set_xlim(0, worlds.shape[2])
         pos = ax.scatter(*positions[0], marker=">", c="g")
         gls = ax.scatter(*goals[0], marker="*", c="r")
+        gls_circ = Circle(goals[0], goal_rad, fill=False)
+        ax.add_artist(gls_circ)
         pn = LineCollection([], colors="red")
         ax.add_collection(pn)
 
@@ -45,8 +48,9 @@ if __name__ == "__main__":
             pn.set_segments(path)
             pos.set_offsets(positions[i])
             gls.set_offsets(goals[i])
+            gls_circ.center = goals[i]
             im.set_array(worlds[i, :, :].T)
-            return (im, ln, pn, pos)
+            return (im, ln, pn, pos, gls_circ)
 
         frames = list(range(worlds.shape[0]))
 
@@ -55,10 +59,10 @@ if __name__ == "__main__":
         )
 
     tworld = world_gen.make_perlin_world(
-        (256, 128, 128), (2, 4, 4), 5, seed=92103, thresh=0.4
+        (64, 128, 128), (2, 4, 4), 5, seed=92103, thresh=0.4
     )
     start, goal = rrt.get_rand_start_end(tworld[0])
-    rrta = rrt.RRTa(start, goal, 250, 10)
+    rrta = rrt.RRTaStar(start, goal, 250, 60)
 
     Ts = []
     poss = []
@@ -66,7 +70,8 @@ if __name__ == "__main__":
     positions = []
     goals = []
 
-    velocity = 2.5
+    velocity = 7
+    goal_rad = 10
 
     for world in tworld:
         goals.append(rrta.goal)
@@ -84,10 +89,10 @@ if __name__ == "__main__":
                 rrta.set_start(s_new)
         positions.append(path[0])
         d_to_goal = euclidean(rrta.start, rrta.goal)
-        if d_to_goal < velocity:
+        if d_to_goal < goal_rad:
             _, goal = rrt.get_rand_start_end(world, bias=False)
             rrta.set_goal(goal)
 
-    anim = animate(tworld, Ts, poss, paths, positions, goals, start, goal)
+    anim = animate(tworld, Ts, poss, paths, positions, goals, goal_rad, start, goal)
     plt.show()
-    anim.save("./fly.mp4")
+    anim.save("./fly_RRTSTAR.mp4")

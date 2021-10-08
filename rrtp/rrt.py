@@ -710,3 +710,145 @@ class RRTaStar(RRT):
                             T.remove_edge(v_parent, nearby)
         endn = self.get_end_node(T, world, self.goal)
         return T, startn, endn
+
+
+class RRTGrow(object):
+    def __init__(self, w, h, start, goal, k, dx):
+        self.k = k
+        self.start, self.goal = start, goal
+        self.dx = dx
+        self.T = nx.DiGraph()
+        startn = uuid.uuid4()
+        self.T.add_node(startn, point=self.start, active=True, cost=0.0)
+        self.world = np.empty((w, h), dtype=np.uint8)
+
+    def nearest_nodes(self, x: np.array) -> list:
+        def distance(u: uuid.UUID):
+            x1 = self.T.nodes[u]["point"]
+            x2 = x
+            return dotself(x1 - x2)
+
+        return sorted(
+            [n for n in self.T.nodes if self.T.nodes[n]["active"] == True], key=distance
+        )
+
+    def collision(self, v1, v2) -> bool:
+        if type(v1) == np.ndarray:
+            x0 = v1[0]
+            y0 = v1[1]
+        elif type(v1) == uuid.UUID:
+            x0 = self.T.nodes[v1]["point"][0]
+            y0 = self.T.nodes[v1]["point"][1]
+        else:
+            raise TypeError("v1")
+        if type(v2) == np.ndarray:
+            x1 = v2[0]
+            y1 = v2[1]
+        elif type(v2) == uuid.UUID:
+            x1 = self.T.nodes[v2]["point"][0]
+            y1 = self.T.nodes[v2]["point"][1]
+        else:
+            raise TypeError("v2")
+
+        dx = abs(x1 - x0)
+        if x0 < x1:
+            sx = 1
+        else:
+            sx = -1
+
+        dy = -abs(y1 - y0)
+        if y0 < y1:
+            sy = 1
+        else:
+            sy = -1
+        err = dx + dy
+        while True:
+            if x0 == x1 and y0 == y1:
+                return False
+            # compare
+            if self.world[x0, y0] == 1:
+                return True
+            e2 = 2 * err
+            if e2 >= dy:
+                err += dy
+                x0 += sx
+            if e2 <= dx:
+                err += dx
+                y0 += sy
+
+    def near(self, p, r):
+        """Get nodes within `r` of point `p`."""
+        r2 = r * r
+        within = []
+        for n in self.T.nodes:
+            if dotself(self.T.nodes[n]["point"] - p) < r2:
+                within.append(n)
+        return within
+
+    def get_cost(self, v, x=None):
+        if x is None:
+            return self.T.nodes[v]["cost"]
+        else:
+            dist = euclidean(self.T.nodes[v]["point"], x)
+            return self.T.nodes[v]["cost"] + dist
+
+    def get_end_node(self, T, world, end_point):
+        v_nearest = self.nearest_nodes(T, end_point)[0]
+        if not self.collision(T, world, v_nearest, end_point):
+            end_node = uuid.uuid4()
+            T.add_node(end_node, point=end_point, active=True)
+            T.add_edge(
+                v_nearest,
+                end_node,
+                dist=self.dist_nodes(T, end_node, v_nearest),
+                active=True,
+            )
+        else:
+            end_node = v_nearest
+
+    def make(self):
+        free = np.argwhere(self.world == 0)
+        k = 0
+        tries = 0
+        while k < self.k:
+            k += 1
+            tries += 1
+            if tries > self.k * 2:
+                break
+            rand_idx = np.random.choice(free.shape[0])
+            x = free[rand_idx]
+            v_nearest = self.nearest_nodes(x)[0]
+            if not self.collision(v_nearest, x):
+                newn = uuid.uuid4()
+                # get minimum cost paths within radius
+                nodes_near = self.near(x, self.dx)
+                v_min = v_nearest
+                c_min = self.get_cost(v_nearest, x)
+                for nearby in nodes_near:
+                    coll = self.collision(nearby, x)
+                    cost = self.get_cost(nearby, x)
+                    if (not coll) and (cost < c_min):
+                        v_min = nearby
+                        c_min = cost
+                # rewire the tree
+                dist = euclidean(self.T.nodes[v_min]["point"], x)
+                # add new node
+                T.add_node(
+                    newn,
+                    point=x,
+                    cost=self.get_cost(T, v_min, x=x),
+                    active=True,
+                )
+                # add new edge
+                T.add_edge(v_min, newn, dist=dist, active=True)
+                for nearby in nodes_near:
+                    coll = not self.collision(nearby, x)
+                    nearby_pt = self.T.nodes[nearby]["point"]
+                    cost = self.get_cost(newn) + self.get_cost(newn, nearby_pt)
+                    if coll and cost < self.get_cost(nearby):
+                        v_parent = next(self.T.predecessors(nearby), None)
+                        if v_parent is not None:
+                            dist = self.dist_nodes(nearby, newn)
+                            self.T.add_edge(newn, nearby, dist=dist, active=True)
+                            self.T.remove_edge(v_parent, nearby)
+        self.get_end_node()
