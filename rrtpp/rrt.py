@@ -489,6 +489,7 @@ class RRTstarInformed(RRT):
                 y0 += sy
 
     def make(self, world, xstart, xgoal, N, r, rgoal):
+        print("Going to...{}".format(xgoal))
         i = 1
         Vsoln = set()
         T = nx.DiGraph()
@@ -526,6 +527,5 @@ class RRTstarInformed(RRT):
 
                 if dotself(xnew - xgoal) < dotself(rgoal):
                     Vsoln.add(i)
-                    print(Vsoln)
-
+        print("Done! {} nodes.".format(len(T.nodes)))
         return T
