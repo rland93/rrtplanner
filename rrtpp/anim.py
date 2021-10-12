@@ -56,6 +56,34 @@ def animate(worlds, Ts, poss, paths, positions, goals, goal_rad, start, end):
     return animation.FuncAnimation(fig, anim, frames=frames, interval=75, blit=False)
 
 
+def make_single(
+    world_size: tuple,
+    k: int,
+    dx: float,
+):
+    world = world_gen.make_perlin_world((1, *world_size), (1, 4, 4), 5, thresh=0.37)[
+        0, :, :
+    ]
+    start, goal = rrt.get_rand_start_end(world)
+    rrta = rrt.RRTstar(start, goal, k, dx)
+    T, startn, goaln = rrta.make(world)
+    fig, ax = plt.subplots()
+    ax.imshow(world.T, cmap=cm.get_cmap("Greys"), origin="lower")
+
+    edges = np.array(
+        [(T.nodes[e1]["point"], T.nodes[e2]["point"]) for (e1, e2) in T.edges]
+    )
+    ln = LineCollection(edges, colors="silver")
+    ax.add_collection(ln)
+    nodes = np.array([T.nodes[n]["point"] for n in T if T.nodes[n]["active"] == True])
+    ax.scatter(nodes[:, 0], nodes[:, 1], c="k", marker=".")
+
+    ax.scatter(start[0], start[1], c="g", marker="^")
+    ax.scatter(goal[0], goal[1], c="r", marker="*")
+
+    plt.show()
+
+
 def make_animation(
     world_size: tuple,
     frames: int,
@@ -63,7 +91,7 @@ def make_animation(
     goal_rad: float,
     worldspeed: int,
     k: int,
-    dx: int,
+    dx: float,
     movie_file: str = "./animation.mp4",
 ):
     worldmovespeed = max(int(frames / 32) * worldspeed, 1)

@@ -3,8 +3,8 @@ import numpy as np
 import uuid
 import networkx as nx
 from collections import deque
-from typing import Union
-from typing import Union
+from typing import Union, overload
+from scipy.linalg import svd, det, norm
 
 
 def dotself(u):
@@ -243,6 +243,9 @@ class RRT(object):
         point_path = np.array([T.nodes[n]["point"] for n in node_path])
         return point_path
 
+    def random_sample(self, world, free, sample=None):
+        return free[np.random.choice(free.shape[0])]
+
 
 class RRTstandard(RRT):
     def __init__(self, start, goal, k):
@@ -258,7 +261,7 @@ class RRTstandard(RRT):
         while k < self.k:
             if tries > self.k * 3:
                 break
-            rand_idx = np.random.choice(free.shape[0])
+            rand_idx = self.random_sample(world, free)
             x_rand = free[rand_idx]
             x_new = x_rand
             v_nearest = self.nearest_nodes(T, x_new)[0]
@@ -346,8 +349,7 @@ class RRTstar(RRT):
             tries += 1
             if tries > self.k * 2:
                 break
-            rand_idx = np.random.choice(free.shape[0])
-            x = free[rand_idx]
+            x = self.random_sample(world, free)
             v_nearest = self.nearest_nodes(T, x)[0]
             if not self.collision(T, world, v_nearest, x):
                 newn = uuid.uuid4()
@@ -384,3 +386,146 @@ class RRTstar(RRT):
                             T.remove_edge(v_parent, nearby)
         endn = self.get_end_node(T, world, self.goal)
         return T, startn, endn
+
+
+class RRTstarInformed(RRT):
+    def __init__(self):
+        pass
+
+    def get_cbest(self, T, Vsoln):
+        if len(Vsoln) == 0:
+            return None
+        else:
+            return min([v for v in Vsoln], key=lambda u: T.nodes[u]["cost"])
+
+    @staticmethod
+    def rotation_to_world_frame(xstart, xgoal):
+        a1 = np.atleast_2d((xgoal - xstart) / euclidean(xgoal, xstart))
+        B = np.dot(a1.T, np.atleast_2d([0, 1]))
+        U, _, V = svd(B)
+        d = np.diag([det(U), det(V)])
+        rotmat = U @ d @ V.T
+        return rotmat
+
+    @staticmethod
+    def unitball():
+        r = np.random.uniform(0, 1)
+        theta = np.pi * np.random.uniform(0, 2)
+        x = np.sqrt(r) * np.cos(theta)
+        y = np.sqrt(r) * np.sin(theta)
+        return np.array([x, y])
+
+    def sample(self, world, xstart, xgoal, cmax=None):
+        free = np.argwhere(world == 0)
+        if cmax is not None:
+            cmin = dotself(xstart - xgoal) / norm(xstart - xgoal)
+            xcent = (xstart + xgoal) / 2
+            C = self.rotation_to_world_frame(xstart, xgoal)
+            r1 = cmax / 2
+            r2 = np.sqrt(np.abs(cmax * cmax - cmin * cmin)) / 2.0
+            L = np.diag([r1, r2])
+            # xball = self.unitball()
+            xball = np.random.normal(size=(2,))
+            CL = np.dot(C, L)
+            x, y = tuple(np.dot(CL, xball) + xcent)
+            # clamp
+            x = int(max(0, min(world.shape[0] - 1, x)))
+            y = int(max(0, min(world.shape[1] - 1, y)))
+            point = np.array((x, y))
+            return point
+        else:
+            return free[np.random.choice(free.shape[0])]
+
+    def steer(self, xnearest, xrand):
+        pass
+
+    def get_cost(self, T: nx.DiGraph, v: uuid.uuid4, x: np.array = None):
+        """get cost of a node `v`. If `x` is passed, get the cost to that point"""
+        if x is None:
+            return T.nodes[v]["cost"]
+        else:
+            dist = euclidean(T.nodes[v]["point"], x)
+            return T.nodes[v]["cost"] + dist
+
+    def get_parent(self, T, v):
+        return next(T.predecessors(v), None)
+
+    def collision(
+        self,
+        T: nx.DiGraph,
+        world,
+        v1: np.array,
+        v2: np.array,
+    ) -> bool:
+        x0 = v1[0]
+        y0 = v1[1]
+        x1 = v2[0]
+        y1 = v2[1]
+
+        dx = abs(x1 - x0)
+        if x0 < x1:
+            sx = 1
+        else:
+            sx = -1
+
+        dy = -abs(y1 - y0)
+        if y0 < y1:
+            sy = 1
+        else:
+            sy = -1
+        err = dx + dy
+        while True:
+            if x0 == x1 and y0 == y1:
+                return False
+            # compare
+            if world[x0, y0] == 1:
+                return True
+            e2 = 2 * err
+            if e2 >= dy:
+                err += dy
+                x0 += sx
+            if e2 <= dx:
+                err += dx
+                y0 += sy
+
+    def make(self, world, xstart, xgoal, N, r, rgoal):
+        i = 1
+        Vsoln = set()
+        T = nx.DiGraph()
+        T.add_node(i, point=xstart, cost=0)
+
+        j = 0
+        while i < N:
+            cbest = self.get_cbest(T, Vsoln)
+            xrand = self.sample(world, xstart, xgoal, cmax=cbest)
+            vnearest = self.nearest_nodes(T, xrand)[0]
+            xnew = xrand
+            if not self.collision(T, world, T.nodes[vnearest]["point"], xnew):
+                i += 1
+                vnear = self.near(T, xnew, r)
+                cmin = self.get_cost(T, vnearest, xnew)
+                for vn in vnear:
+                    cnew = self.get_cost(T, vn, xnew)
+                    if cnew < cmin:
+                        if not self.collision(T, world, T.nodes[vn]["point"], xnew):
+                            vnearest = vn
+                            cmin = cnew
+
+                T.add_node(i, point=xnew, cost=self.get_cost(T, vnearest, xnew))
+                T.add_edge(vnearest, i)
+
+                for vn in vnear:
+                    cnear = self.get_cost(T, vn)
+                    cnew = self.get_cost(T, vn, xnew)
+                    if cnew < cnear:
+                        if not self.collision(T, world, T.nodes[vn]["point"], xnew):
+                            vparent = self.get_parent(T, vn)
+                            if vparent is not None:
+                                T.remove_edge(vparent, vn)
+                                T.add_edge(vn, i)
+
+                if dotself(xnew - xgoal) < dotself(rgoal):
+                    Vsoln.add(i)
+                    print(Vsoln)
+
+        return T
