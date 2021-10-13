@@ -1,18 +1,19 @@
+from ctypes import ArgumentError
 from scipy.spatial.distance import euclidean
 import numpy as np
-import uuid
 import networkx as nx
-from collections import deque
-from typing import Union, overload
 from scipy.linalg import svd, det, norm
+from tqdm import tqdm
+from matplotlib.patches import Ellipse
 
 
 def dotself(u):
+    """dot vector `u` with self"""
     return np.dot(u, u)
 
 
 def make_pos(T: nx.DiGraph) -> dict:
-    """keys are nodes, values are positions"""
+    """extract a dict where keys are nodes and values are positions"""
     pos = {}
     for n in T.nodes:
         pos[n] = T.nodes[n]["point"]
@@ -20,6 +21,7 @@ def make_pos(T: nx.DiGraph) -> dict:
 
 
 def get_rand_start_end(world, bias=True):
+    """get random free start, end in the world"""
     free = np.argwhere(world == 0)
     """if bias, prefer points far away from one another"""
     if bias == True:
@@ -33,157 +35,103 @@ def get_rand_start_end(world, bias=True):
     return start, end
 
 
-class RRT(object):
-    def __init__(self, start, goal, k):
-        self.start = start
-        self.goal = goal
-        self.k = k
+def nearest_nodes(T: nx.DiGraph, x) -> list:
+    """get a list of the nodes sorted by distance to point `x`, nearest first"""
 
-    def nearest_nodes(self, T: nx.DiGraph, x: np.array) -> list:
-        """Get nearest nodes to point x
-
-        Parameters
-        ----------
-        T : nx.DiGraph
-            existing graph
-        x : np.array
-            shape (2,) existing point
-
-        Returns
-        -------
-        list
-            list of nodes
-        """
-
-        def distance(u: uuid.UUID):
-            x1 = T.nodes[u]["point"]
-            x2 = x
-            return dotself(x1 - x2)
-
-        return sorted([n for n in T.nodes], key=distance)
-
-    def get_end_node(
-        self, T: nx.DiGraph, world: np.ndarray, end_point: np.ndarray
-    ) -> uuid.uuid4:
-        """make or get the end node. if the end point is covered by obstacles, get the nearest node
-        to it in the tree.
-
-        Parameters
-        ----------
-        T : nx.DiGraph
-            The world graph
-        world : np.ndarray
-            MxN world
-        end_point : np.ndarray
-            shape (2,) end point
-
-        Returns
-        -------
-        uuid.uuid4
-            id of the node
-        """
-        v_nearest = self.nearest_nodes(T, end_point)[0]
-        if not self.collision(T, world, v_nearest, end_point):
-            end_node = uuid.uuid4()
-            T.add_node(end_node, point=end_point, active=True)
-            T.add_edge(
-                v_nearest,
-                end_node,
-                dist=self.dist_nodes(T, end_node, v_nearest),
-                active=True,
-            )
+    def distance(u):
+        x1 = T.nodes[u]["point"]
+        x2 = x
+        d2 = dotself(x1 - x2)
+        if d2 != 0:
+            return d2
         else:
-            end_node = v_nearest
-        return end_node
+            return np.Infinity
 
-    def dist_nodes(self, T: nx.DiGraph, u: uuid.uuid4, v: uuid.uuid4) -> float:
-        """get euclidean distance between two nodes
+    return sorted([n for n in T.nodes], key=distance)
 
-        Parameters
-        ----------
-        T : nx.DiGraph
-            world graph
-        u : uuid.uuid4
-            id of node 1
-        v : uuid.uuid4
-            id of node 2
 
-        Returns
-        -------
-        float
-            euclidean distance
-        """
-        p1 = T.nodes[u]["point"]
-        p2 = T.nodes[v]["point"]
-        return euclidean(p1, p2)
+def get_end_node(T: nx.DiGraph, world, xgoal):
+    """get the 'end' node, given a tree and an end point. The end node is either the point itself,
+    if a path to it is possible, or the closest node in the tree to the end point."""
+    vnearest = nearest_nodes(T, xgoal)[0]
+    xnearest = T.nodes[vnearest]["point"]
+    if not collision(T, world, xnearest, xgoal):
+        v = max(T.nodes) + 1
+        newcost = calc_cost(T, vnearest, xgoal)
+        T.add_node(v, point=xgoal, cost=newcost)
+        T.add_edge(vnearest, v, dist=euclidean(xnearest, xgoal), cost=newcost)
+        return v
+    else:
+        return vnearest
 
-    def collision(
-        self,
-        T: nx.DiGraph,
-        world,
-        v1: Union[uuid.uuid4, np.array],
-        v2: Union[uuid.uuid4, np.array],
-    ) -> bool:
-        """Calculate a collision on T.
 
-        Parameters
-        ----------
-        T : nx.DiGraph
-            world graph
-        world : np.array
-            MxN array representing the world
-        v1 : Union[uuid.uuid4, np.array]
-            node id or point of vertex 1
-        v2 : Union[uuid.uuid4, np.array]
-            node id or point of vertex 2
+def near(T: nx.DiGraph, x, r):
+    """get nodes within `r` of point `x`"""
+    r2 = r * r
+    within = []
+    for n in T.nodes:
+        if dotself(T.nodes[n]["point"] - x) < r2:
+            within.append(n)
+    return within
 
-        Returns
-        -------
-        bool
-            True if there is a collision
 
-        Raises
-        ------
-        TypeError
-            if v1 is not node id or point
-        TypeError
-            if v2 is not node id or point
-        """
-        if type(v1) == np.ndarray:
-            x0 = v1[0]
-            y0 = v1[1]
-        elif type(v1) == uuid.UUID:
-            x0 = T.nodes[v1]["point"][0]
-            y0 = T.nodes[v1]["point"][1]
+def path(T: nx.DiGraph, startv, endv) -> list:
+    """get path from one vertex to another, in the form of a list of nodes comprising the path"""
+    path = nx.shortest_path(T, source=startv, target=endv, weight="dist")
+    point_path = np.array([T.nodes[n]["point"] for n in path])
+    return point_path
+
+
+########### RRT Star Informed
+
+
+def unitball():
+    """draw a point from a uniform distribution bounded by the ball at 1 = x^2 + y^2"""
+    r = np.random.uniform(0, 1)
+    theta = 2 * np.pi * np.random.uniform(0, 1)
+    x = np.sqrt(r) * np.cos(theta)
+    y = np.sqrt(r) * np.sin(theta)
+    unif = np.array([x, y])
+    return unif
+
+
+def calc_cost(T, v, x=None):
+    if x is not None:
+        return T.nodes[v]["cost"] + euclidean(T.nodes[v]["point"], x)
+    else:
+        return T.nodes[v]["cost"]
+
+
+def get_parent(T, v):
+    """get first parent of node `v` on T. If a parent does not exist,
+    return None."""
+    return next(T.predecessors(v), None)
+
+
+def collision(T: nx.DiGraph, world, a, b) -> bool:
+    x0 = a[0]
+    y0 = a[1]
+    x1 = b[0]
+    y1 = b[1]
+
+    dx = abs(x1 - x0)
+    if x0 < x1:
+        sx = 1
+    else:
+        sx = -1
+
+    dy = -abs(y1 - y0)
+    if y0 < y1:
+        sy = 1
+    else:
+        sy = -1
+    err = dx + dy
+    while True:
+        if world[x0, y0] == 1:
+            return True
+        elif x0 == x1 and y0 == y1:
+            return False
         else:
-            raise TypeError("v1")
-        if type(v2) == np.ndarray:
-            x1 = v2[0]
-            y1 = v2[1]
-        elif type(v2) == uuid.UUID:
-            x1 = T.nodes[v2]["point"][0]
-            y1 = T.nodes[v2]["point"][1]
-        else:
-            raise TypeError("v2")
-
-        dx = abs(x1 - x0)
-        if x0 < x1:
-            sx = 1
-        else:
-            sx = -1
-
-        dy = -abs(y1 - y0)
-        if y0 < y1:
-            sy = 1
-        else:
-            sy = -1
-        err = dx + dy
-        while True:
-            if x0 == x1 and y0 == y1:
-                return False
-            # compare
-            if world[x0, y0] == 1:
-                return True
             e2 = 2 * err
             if e2 >= dy:
                 err += dy
@@ -192,338 +140,212 @@ class RRT(object):
                 err += dx
                 y0 += sy
 
-    def near(self, T: nx.DiGraph, p: np.array, r: float):
-        """get nearby nodes of point p
 
-        Parameters
-        ----------
-        T : nx.DiGraph
-            world graph
-        p : np.array
-            point to check
-        r : float
-            within radius
+############ RRT STANDARD
+def make_RRT_standard(world, xstart, xgoal, N):
+    """Make RRT standard tree with `N` points from xstart to xgoal.
+    Returns the tree, the start node, and the end node."""
+    T = nx.DiGraph()
+    i = 1
+    vstart = i
+    T.add_node(vstart, point=xstart)
+    pbar = tqdm(total=N)
+    while i < N:
+        # uniform sample over world
+        xnew = sample(world)
+        vnearest = nearest_nodes(T, xnew)[0]
+        xnearest = T.nodes[vnearest]["point"]
+        if not collision(T, world, xnearest, xnew) and all(xnearest != xnew):
+            T.add_node(i, point=xnew)
+            T.add_edge(vnearest, i, dist=euclidean(xnearest, xnew))
+            pbar.update(1)
+            i += 1
+    pbar.close()
+    vend = get_end_node(T, world, xgoal)
+    return T, vstart, vend
 
-        Returns
-        -------
-        list of nodes
-            list of nearby nodes
-        """
-        r2 = r * r
-        within = []
-        for n in T.nodes:
-            if dotself(T.nodes[n]["point"] - p) < r2:
-                within.append(n)
-        return within
 
-    def set_start(self, start):
-        self.start = start
+########## RRT Star
+def make_RRT_star(world, xstart, xgoal, N, n_rewire):
+    """Make RRT star with `N` points from xstart to xgoal.
+    Returns the tree, the start node, and the end node."""
+    T = nx.DiGraph()
+    i = 1
+    vstart = 0
+    T.add_node(vstart, point=xstart, cost=0.0)
+    pbar = tqdm(total=N)
+    while i < N:
+        xnew = sample(world)
+        vnearest = nearest_nodes(T, xnew)
+        xnearest = T.nodes[vnearest[0]]["point"]
+        if not collision(T, world, xnearest, xnew):
+            # add the node for sure
+            vnew = i
+            # now we look at edges...
+            vmin = vnearest[0]
+            xmin = xnearest
+            cmin = calc_cost(T, vmin, xnew)
+            # search other nodes for a lower cost than minimum
+            for j, vn in enumerate(vnearest):
+                coll = collision(T, world, T.nodes[vn]["point"], xnew)
+                cost = calc_cost(T, vn, xnew)
+                # lower cost and no collision
+                if (cost < cmin) and (not coll):
+                    xmin = T.nodes[vn]["point"]
+                    cmin = cost
+                    vmin = vn
+                # constant-time search
+                if j > n_rewire:
+                    break
+            dist = euclidean(T.nodes[vmin]["point"], xnew)
+            T.add_node(vnew, point=xnew, cost=cmin)
+            T.add_edge(vmin, vnew, dist=dist)
+            # now rewire the tree
+            for j, vn in enumerate(vnearest):
+                coll = collision(T, world, T.nodes[vn]["point"], xnew)
+                cost = calc_cost(T, vn, xnew) < calc_cost(T, vn)
+                if (not coll) and cost:
+                    vparent = get_parent(T, vn)
+                    if vparent is not None:
+                        T.remove_edge(vparent, vn)
+                        T.add_edge(vnew, vn)
+                if j > n_rewire:
+                    break
+            pbar.update(1)
+            i += 1
+    pbar.close()
+    vend = get_end_node(T, world, xgoal)
+    return T, vstart, vend
 
-    def set_goal(self, goal):
-        self.goal = goal
 
-    def path(self, T: nx.DiGraph, start: uuid.uuid4, end: uuid.uuid4) -> list:
-        """get path from one node to another, in the form of a list of nodes comprising the path
+def make_RRT_starinformed(world, xstart, xgoal, N, r_rewire, rgoal):
+    """make rrtstar informed"""
+    Vsoln = set()
+    T = nx.DiGraph()
+    i = 1
+    vstart = 0
+    T.add_node(vstart, point=xstart, cost=0.0)
+    pbar = tqdm(total=N)
+    while i < N:
+        vbest, cbest = least_cost(T, Vsoln)
+        if vbest is not None:
+            xrand = sample(
+                world,
+                (xstart, xgoal),
+                cmax=cbest + euclidean(T.nodes[vbest]["point"], xgoal),
+            )
+        else:
+            xrand = sample(world)
+        vnearest = nearest_nodes(T, xrand)[0]
+        xnew = xrand
+        if not collision(T, world, T.nodes[vnearest]["point"], xnew):
+            vnear = near(T, xnew, r_rewire)
+            vnear.append(vnearest)
+            vbest, new_cost = min(
+                [
+                    (v, calc_cost(T, v, xnew))
+                    for v in vnear
+                    if not collision(T, world, T.nodes[v]["point"], xnew)
+                ],
+                key=lambda t: t[1],
+            )
 
-        Parameters
-        ----------
-        T : nx.DiGraph
-            world graph
-        start : uuid.uuid4
-            start node
-        end : uuid.uuid4
-            end node
+            pbar.update(1)
+            i += 1
+            T.add_node(i, point=xnew, cost=new_cost)
+            T.add_edge(vbest, i, cost=new_cost)
 
-        Returns
-        -------
-        list
-            list of nodes making up the path
-        """
-        node_path = nx.shortest_path(T, source=start, target=end, weight="dist")
-        point_path = np.array([T.nodes[n]["point"] for n in node_path])
-        return point_path
+            for vn in vnear:
+                xn = T.nodes[vn]["point"]
+                if calc_cost(T, i, xn) < calc_cost(T, vn):
+                    if not collision(T, world, xnew, xn):
+                        vparent = get_parent(T, vn)
+                        if vparent is not None:
+                            T.remove_edge(vparent, vn)
+                            rewired_cost = calc_cost(T, i, xn)
+                            T.nodes[vn]["cost"] = rewired_cost
+                            T.add_edge(i, vn, cost=rewired_cost)
 
-    def random_sample(self, world, free, sample=None):
+            if dotself(xnew - xgoal) < rgoal * rgoal:
+                Vsoln.add(i)
+
+    pbar.close()
+    if len(Vsoln) > 0:
+        vend, cbest = min([(v, T.nodes[v]["cost"]) for v in Vsoln], key=lambda t: t[1])
+        ell = get_ellipse_ax(
+            xstart, xgoal, cbest, euclidean(T.nodes[vend]["point"], xgoal)
+        )
+    else:
+        ell = Ellipse((0, 0), 1, 1, 0)
+        vend = nearest_nodes(T, xgoal)[0]
+
+    return T, vstart, vend, ell
+
+
+def rad2deg(a):
+    return a * 180 / np.pi
+
+
+def rotation_to_world_frame(xstart, xgoal):
+    """calculate the rotation matrix from the world-frame to the frame given
+    by the hyperellipsoid with focal points at xf1=xstart and xf2=xgoal. a unit
+    ball multiplied by this matrix will produce an oriented ellipsoid with those
+    focal points."""
+    a1 = np.atleast_2d((xgoal - xstart) / norm(xgoal - xstart))
+    M = np.outer(a1, np.atleast_2d([1, 0]))
+    U, _, V = svd(M)
+    return U @ np.diag([det(U), det(V)]) @ V.T
+
+
+def get_ellipse_xform(xstart, xgoal, cmax, d):
+    """transform vector in unit plane to ellipse plane"""
+    C = rotation_to_world_frame(xstart, xgoal)
+    r1 = cmax / 2
+    r2 = np.sqrt(abs(dotself(cmax + d) - dotself(xstart - xgoal))) / 2
+    print(r2)
+    L = np.diag([r1, r2])
+    return np.dot(C, L)
+
+
+def get_ellipse_ax(xstart, xgoal, cbest, d):
+    xcent = (xgoal + xstart) / 2
+
+    # get the rotation
+    CL = get_ellipse_xform(xstart, xgoal, cbest, d)
+
+    # apply the rotation to find major axis, minor axis, angle
+    a = np.dot(CL, np.array([1, 0]))
+    b = np.dot(CL, np.array([0, 1]))
+    majax = 2 * norm(a)
+    minax = 2 * norm(b)
+    ang = rad2deg(np.arctan2((a)[1], (a)[0]))
+
+    return Ellipse(xcent, majax, minax, ang, fill=None)
+
+
+def sample(world, startgoal=None, cmax=None, vmax=0):
+    """sample from free space in the world. If cmax and startgoal are given, sample from
+    the ellipsoid with focal points xstart and xgoal"""
+    free = np.argwhere(world == 0)
+    if cmax is not None and startgoal is not None:
+        xstart, xgoal = startgoal
+        xcent = (xstart + xgoal) / 2
+        CL = get_ellipse_xform(xstart, xgoal, cmax, vmax)
+        xball = unitball()
+
+        x, y = tuple(np.dot(CL, xball) + xcent)
+        # clamp to finite world
+        x = int(max(0, min(world.shape[0] - 1, x)))
+        y = int(max(0, min(world.shape[1] - 1, y)))
+        point = np.array((x, y))
+        return point
+    else:
         return free[np.random.choice(free.shape[0])]
 
 
-class RRTstandard(RRT):
-    def __init__(self, start, goal, k):
-        super().__init__(start, goal, k)
-
-    def make(self, world: np.array):
-        free = np.argwhere(world == 0)
-        T = nx.DiGraph()
-        start_node = uuid.uuid4()
-        T.add_node(start_node, point=self.start, active=True)
-        k = 0
-        tries = 0
-        while k < self.k:
-            if tries > self.k * 3:
-                break
-            rand_idx = self.random_sample(world, free)
-            x_rand = free[rand_idx]
-            x_new = x_rand
-            v_nearest = self.nearest_nodes(T, x_new)[0]
-            if not self.collision(T, world, v_nearest, x_new):
-                new_node = uuid.uuid4()
-                T.add_node(new_node, point=x_new, active=True)
-                T.add_edge(
-                    v_nearest,
-                    new_node,
-                    dist=self.dist_nodes(T, v_nearest, new_node),
-                    active=True,
-                )
-                k += 1
-            tries += 1
-        end_node = self.get_end_node(T, world, self.goal)
-        return T, start_node, end_node
-
-
-class RRTstar(RRT):
-    """RRTstar is a variant of RRT that rewires the tree according to a cost heuristic
-    every time a new node is added. tree rewirings improve the relationship that new
-    nodes have to the rest of the tree, producing more optimal paths at the expense
-    of increased computational cost
-
-    Parameters
-    ----------
-    start : np.array
-        start point
-    goal : np.array
-        goal point
-    k : int
-        no. of sample points
-    dx : float
-        local rewire radius
-    """
-
-    def __init__(self, start: np.array, goal: np.array, k: int, dx: float):
-        super().__init__(start, goal, k)
-        self.dx = dx
-
-    def get_cost(self, T: nx.DiGraph, v: uuid.uuid4, x: np.array = None):
-        """get cost of a node `v`. If `x` is passed, get the cost to that point
-
-        Parameters
-        ----------
-        T : nx.DiGraph
-            world graph
-        v : uuid.uuid4
-            node to get cost of
-        x : np.array, optional
-            if passed, get cost to this point, by default None
-
-        Returns
-        -------
-        float
-            cost
-        """
-        if x is None:
-            return T.nodes[v]["cost"]
-        else:
-            dist = euclidean(T.nodes[v]["point"], x)
-            return T.nodes[v]["cost"] + dist
-
-    def make(self, world: np.array):
-        """Make an RRTstar graph
-
-        Parameters
-        ----------
-        world : np.array
-            MxN world
-
-        Returns
-        -------
-        nx.DiGraph, uuid.uuid4, uuid.uuid4
-            The finished graph, the start node in the graph, the end node in the graph.
-        """
-        free = np.argwhere(world == 0)
-        T = nx.DiGraph()
-        startn = uuid.uuid4()
-        T.add_node(startn, point=self.start, active=True, cost=0.0)
-        k = 0
-        tries = 0
-        while k < self.k:
-            k += 1
-            tries += 1
-            if tries > self.k * 2:
-                break
-            x = self.random_sample(world, free)
-            v_nearest = self.nearest_nodes(T, x)[0]
-            if not self.collision(T, world, v_nearest, x):
-                newn = uuid.uuid4()
-                # get minimum cost paths within radius
-                nodes_near = self.near(T, x, self.dx)
-                v_min = v_nearest
-                c_min = self.get_cost(T, v_nearest, x)
-                for nearby in nodes_near:
-                    coll = self.collision(T, world, nearby, x)
-                    cost = self.get_cost(T, nearby, x)
-                    if (not coll) and (cost < c_min):
-                        v_min = nearby
-                        c_min = cost
-                # rewire the tree
-                dist = euclidean(T.nodes[v_min]["point"], x)
-                # add new node
-                T.add_node(
-                    newn,
-                    point=x,
-                    cost=self.get_cost(T, v_min, x=x),
-                    active=True,
-                )
-                # add new edge
-                T.add_edge(v_min, newn, dist=dist, active=True)
-                for nearby in nodes_near:
-                    coll = not self.collision(T, world, nearby, x)
-                    nearby_pt = T.nodes[nearby]["point"]
-                    cost = self.get_cost(T, newn) + self.get_cost(T, newn, nearby_pt)
-                    if coll and cost < self.get_cost(T, nearby):
-                        v_parent = next(T.predecessors(nearby), None)
-                        if v_parent is not None:
-                            dist = self.dist_nodes(T, nearby, newn)
-                            T.add_edge(newn, nearby, dist=dist, active=True)
-                            T.remove_edge(v_parent, nearby)
-        endn = self.get_end_node(T, world, self.goal)
-        return T, startn, endn
-
-
-class RRTstarInformed(RRT):
-    def __init__(self):
-        pass
-
-    def get_cbest(self, T, Vsoln):
-        if len(Vsoln) == 0:
-            return None
-        else:
-            return min([v for v in Vsoln], key=lambda u: T.nodes[u]["cost"])
-
-    @staticmethod
-    def rotation_to_world_frame(xstart, xgoal):
-        a1 = np.atleast_2d((xgoal - xstart) / euclidean(xgoal, xstart))
-        B = np.dot(a1.T, np.atleast_2d([0, 1]))
-        U, _, V = svd(B)
-        d = np.diag([det(U), det(V)])
-        rotmat = U @ d @ V.T
-        return rotmat
-
-    @staticmethod
-    def unitball():
-        r = np.random.uniform(0, 1)
-        theta = np.pi * np.random.uniform(0, 2)
-        x = np.sqrt(r) * np.cos(theta)
-        y = np.sqrt(r) * np.sin(theta)
-        return np.array([x, y])
-
-    def sample(self, world, xstart, xgoal, cmax=None):
-        free = np.argwhere(world == 0)
-        if cmax is not None:
-            cmin = dotself(xstart - xgoal) / norm(xstart - xgoal)
-            xcent = (xstart + xgoal) / 2
-            C = self.rotation_to_world_frame(xstart, xgoal)
-            r1 = cmax / 2
-            r2 = np.sqrt(np.abs(cmax * cmax - cmin * cmin)) / 2.0
-            L = np.diag([r1, r2])
-            # xball = self.unitball()
-            xball = np.random.normal(size=(2,))
-            CL = np.dot(C, L)
-            x, y = tuple(np.dot(CL, xball) + xcent)
-            # clamp
-            x = int(max(0, min(world.shape[0] - 1, x)))
-            y = int(max(0, min(world.shape[1] - 1, y)))
-            point = np.array((x, y))
-            return point
-        else:
-            return free[np.random.choice(free.shape[0])]
-
-    def steer(self, xnearest, xrand):
-        pass
-
-    def get_cost(self, T: nx.DiGraph, v: uuid.uuid4, x: np.array = None):
-        """get cost of a node `v`. If `x` is passed, get the cost to that point"""
-        if x is None:
-            return T.nodes[v]["cost"]
-        else:
-            dist = euclidean(T.nodes[v]["point"], x)
-            return T.nodes[v]["cost"] + dist
-
-    def get_parent(self, T, v):
-        return next(T.predecessors(v), None)
-
-    def collision(
-        self,
-        T: nx.DiGraph,
-        world,
-        v1: np.array,
-        v2: np.array,
-    ) -> bool:
-        x0 = v1[0]
-        y0 = v1[1]
-        x1 = v2[0]
-        y1 = v2[1]
-
-        dx = abs(x1 - x0)
-        if x0 < x1:
-            sx = 1
-        else:
-            sx = -1
-
-        dy = -abs(y1 - y0)
-        if y0 < y1:
-            sy = 1
-        else:
-            sy = -1
-        err = dx + dy
-        while True:
-            if x0 == x1 and y0 == y1:
-                return False
-            # compare
-            if world[x0, y0] == 1:
-                return True
-            e2 = 2 * err
-            if e2 >= dy:
-                err += dy
-                x0 += sx
-            if e2 <= dx:
-                err += dx
-                y0 += sy
-
-    def make(self, world, xstart, xgoal, N, r, rgoal):
-        i = 1
-        Vsoln = set()
-        T = nx.DiGraph()
-        T.add_node(i, point=xstart, cost=0)
-
-        j = 0
-        while i < N:
-            cbest = self.get_cbest(T, Vsoln)
-            xrand = self.sample(world, xstart, xgoal, cmax=cbest)
-            vnearest = self.nearest_nodes(T, xrand)[0]
-            xnew = xrand
-            if not self.collision(T, world, T.nodes[vnearest]["point"], xnew):
-                i += 1
-                vnear = self.near(T, xnew, r)
-                cmin = self.get_cost(T, vnearest, xnew)
-                for vn in vnear:
-                    cnew = self.get_cost(T, vn, xnew)
-                    if cnew < cmin:
-                        if not self.collision(T, world, T.nodes[vn]["point"], xnew):
-                            vnearest = vn
-                            cmin = cnew
-
-                T.add_node(i, point=xnew, cost=self.get_cost(T, vnearest, xnew))
-                T.add_edge(vnearest, i)
-
-                for vn in vnear:
-                    cnear = self.get_cost(T, vn)
-                    cnew = self.get_cost(T, vn, xnew)
-                    if cnew < cnear:
-                        if not self.collision(T, world, T.nodes[vn]["point"], xnew):
-                            vparent = self.get_parent(T, vn)
-                            if vparent is not None:
-                                T.remove_edge(vparent, vn)
-                                T.add_edge(vn, i)
-
-                if dotself(xnew - xgoal) < dotself(rgoal):
-                    Vsoln.add(i)
-        return T
+def least_cost(T, V):
+    """get lowest cost from a collection `V` of vertices in T"""
+    if len(V) == 0:
+        return None, None
+    else:
+        return min([(v, T.nodes[v]["cost"]) for v in V], key=lambda t: t[1])

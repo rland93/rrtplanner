@@ -1,7 +1,7 @@
 from matplotlib.collections import PatchCollection
 import numpy as np
 from matplotlib.patches import Rectangle
-from perlin_numpy import generate_perlin_noise_3d
+from perlin_numpy import generate_perlin_noise_3d, generate_perlin_noise_2d
 import matplotlib.pyplot as plt
 from matplotlib import animation
 
@@ -88,18 +88,29 @@ class ObstacleGenerator(object):
         return start, end
 
 
-def make_perlin_world(shape, scale, octaves=1, seed=None, thresh=0.3):
-    t, w, h = shape
-    ts, ws, hs = scale
-    noise1 = generate_perlin_noise_3d(
-        (t, w, h), (ts, ws, hs), tileable=(True, True, True)
-    )
-    noise2 = generate_perlin_noise_3d(
-        (t, w, h), (ts, ws * 2, hs * 2), tileable=(True, True, True)
-    )
-    noise = (noise1 + noise2) / 2
-    noise = (noise - np.min(noise)) / (np.max(noise) - np.min(noise))
-    return np.where(noise < thresh, 1, 0)
+def make_world(shape, scale, dimensions=2, octaves=1, seed=None, thresh=0.3):
+    if dimensions == 3:
+        t, w, h = shape
+        ts, ws, hs = scale
+        noise1 = generate_perlin_noise_3d(
+            (t, w, h), (ts, ws, hs), tileable=(True, False, False)
+        )
+        noise2 = generate_perlin_noise_3d(
+            (t, w, h), (ts, ws * 2, hs * 2), tileable=(True, False, False)
+        )
+        noise = (noise1 + noise2) / 2
+        noise = (noise - np.min(noise)) / (np.max(noise) - np.min(noise))
+        return np.where(noise < thresh, 1, 0)
+    elif dimensions == 2:
+        w, h = shape
+        ws, hs = scale
+        noise1 = generate_perlin_noise_2d((w, h), (ws, hs), tileable=(False, False))
+        noise2 = generate_perlin_noise_2d(
+            (w, h), (ws * 2, hs * 2), tileable=(False, False)
+        )
+        noise = (noise1 + noise2) / 2
+        noise = (noise - np.min(noise)) / (np.max(noise) - np.min(noise))
+        return np.where(noise < thresh, 1, 0)
 
 
 def get_rand_start_end(world, bias=True):
