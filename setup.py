@@ -12,8 +12,8 @@ setup(
         "numpy>=1.15",
         "matplotlib>=3.4.3",
         "networkx>=2.6.3",
-        "uuid>=1.30",
         "scipy>=1.7.1",
+        "tqdm>=4",
     ],
     zip_safe=False,
 )
