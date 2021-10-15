@@ -7,6 +7,21 @@ from tqdm import tqdm
 from matplotlib.patches import Ellipse
 
 
+def get_rand_start_end(world, bias=True):
+    """get random free start, end in the world"""
+    free = np.argwhere(world == 0)
+    """if bias, prefer points far away from one another"""
+    if bias == True:
+        start_i = int(np.random.beta(a=0.5, b=5) * free.shape[0])
+        end_i = int(np.random.beta(a=5, b=0.5) * free.shape[0])
+    else:
+        start_i = np.random.choice(free.shape[0])
+        end_i = np.random.choice(free.shape[0])
+    start = free[start_i, :]
+    end = free[end_i, :]
+    return start, end
+
+
 class RRT(object):
     """base class containing common RRT methods"""
 
@@ -39,20 +54,6 @@ class RRT(object):
         """get first parent of node `v`. If a parent does not exist,
         return None."""
         return next(self.T.predecessors(v), None)
-
-    def get_rand_start_end(self, bias=True):
-        """get random free start, end in the world"""
-        free = np.argwhere(self.world == 0)
-        """if bias, prefer points far away from one another"""
-        if bias == True:
-            start_i = int(np.random.beta(a=0.5, b=5) * free.shape[0])
-            end_i = int(np.random.beta(a=5, b=0.5) * free.shape[0])
-        else:
-            start_i = np.random.choice(free.shape[0])
-            end_i = np.random.choice(free.shape[0])
-        start = free[start_i, :]
-        end = free[end_i, :]
-        return start, end
 
     def near(self, x, r):
         """get nodes within `r` of point `x`"""
@@ -240,7 +241,7 @@ class RRTStarInformed(RRT):
         """get least cost vertex and its cost from a collection `V` of vertices in T"""
         return min([(v, self.T.nodes[v]["cost"]) for v in V], key=lambda t: t[1])
 
-    def make(self, xstart, xgoal, N, r_rewire, r_goal):
+    def make(self, xstart, xgoal, N, r_rewire, r_goal) -> tuple:
         """make rrtstar informed"""
         Vsoln = set()
         self.reset_T()
@@ -323,7 +324,7 @@ class RRTStar(RRT):
     def __init__(self, world):
         super().__init__(world)
 
-    def make(self, xstart, xgoal, N, r_rewire):
+    def make(self, xstart, xgoal, N, r_rewire) -> tuple:
         """Make RRT star with `N` points from xstart to xgoal.
         Returns the tree, the start node, and the end node."""
         self.reset_T()
@@ -386,7 +387,7 @@ class RRTStandard(RRT):
         super().__init__(world)
         self.T = nx.DiGraph()
 
-    def make(self, xstart, xgoal, N):
+    def make(self, xstart, xgoal, N) -> tuple:
         """Make RRT standard tree with `N` points from xstart to xgoal.
         Returns the tree, the start node, and the end node."""
         self.reset_T()
