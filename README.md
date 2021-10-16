@@ -4,7 +4,13 @@
 
 This package contains the standard RRT and RRT* algorithms, written in python, as well as the variant RRT* Informed.
 
-See also [http://lavalle.pl/rrt/](LaValle's RRT Page.)
+See also:
+
++ [LaValle's RRT Page.](http://lavalle.pl/rrt/)
+
++ [RRT * Paper](https://arxiv.org/abs/1005.0416)
+
++ [Informed RRT* Paper](https://arxiv.org/abs/1404.2334v3)
 
 It uses networkx graphs with points assigned to nodes as datastructures for the trees. It uses Bresenham's line collision algorithm to calculate collisions with obstacles.
 
