@@ -1,1 +1,1 @@
-from rrt import RRTStandard, RRTStar, RRTStarInformed
+from .rrt import RRTStandard, RRTStar, RRTStarInformed
