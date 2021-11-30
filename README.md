@@ -16,11 +16,16 @@ It uses networkx graphs with points assigned to nodes as datastructures for the 
 
 The test worlds are made from Perlin noise.
 
-~~~Slices of 3-d perlin noise are used to simulate dynamic environments; those can be animated with the animation module (currently broken)~~~
+Slices of 3-d perlin noise are used to simulate dynamic environments; those can be animated with the animation module.
 
 ## Installation
 
-```
+```bash
 pip install git+https://github.com/rland93/rrt_pathplanner
 ```
-Also requires the [`perlin-numpy`](https://github.com/pvigier/perlin-numpy) package to make the random worlds. You need to install that one manually.
+
+Also requires the [`perlin-numpy`](https://github.com/pvigier/perlin-numpy) package to make the random worlds. You need to install that one manually:
+
+```bash
+pip install git+https://github.com/pvigier/perlin-numpy
+```
