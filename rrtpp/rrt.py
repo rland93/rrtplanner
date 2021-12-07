@@ -83,7 +83,7 @@ def nearest(points, x):
 class RRTvec(object):
     """base class containing common RRT methods"""
 
-    def __init__(self, world, n, pbar=True):
+    def __init__(self, world, n, dubins=False, pbar=True):
         # the world
         self.world = np.array(world)
         # whether to display a progress bar
@@ -91,11 +91,11 @@ class RRTvec(object):
         # array containing vertex points
         self.n = n
         # points, N+1 x 2
-        self.points = np.full((n + 2, 2), np.iinfo(np.int64).max, dtype=np.int64)
+        self.points = np.full((n, 2), np.iinfo(np.int64).max, dtype=np.int64)
         # edges (matrix) N+1 x N+1
-        self.edges = np.zeros((n + 2, n + 2), dtype=bool)
+        self.edges = np.zeros((n, n), dtype=bool)
         # costs (array) N+1 x 1
-        self.vcosts = np.full((n + 1, 1), np.Infinity, dtype=float)
+        self.vcosts = np.full((n, 1), np.Infinity, dtype=float)
         # world free space
         self.free = np.argwhere(world == 0)
 
@@ -135,7 +135,6 @@ class RRTvec(object):
         for i, p, d in zip(idxs, points, dists):
             if collisionfree(self.world, p, xgoal):
                 self.edges[i, -1] = 1
-
 
 
 class RRTstar(RRTvec):
