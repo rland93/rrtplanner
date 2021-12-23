@@ -370,14 +370,15 @@ class RRTDubins(object):
         else:
             return None
 
-    def make(self, xstart, xgoal, hstart, r_rewire):
+    def make(self, xstart, xgoal, hstart):
         # store xstart into points
         self.points.append(xstart)
         self.headings.append(hstart)
         tstart = self.get_twist(xstart, hstart)
         self.twists.append(tstart)
         # dpath from i -> j is stored in key (i, j)
-        discrete_dpaths = {}
+        dpaths = {}
+
         reached_goal = False
         i = 0
         T = nx.DiGraph()
@@ -388,8 +389,8 @@ class RRTDubins(object):
             hnew = random.uniform(0, P2I)
             tnew = self.get_twist(xnew, hnew)
             vnearest = nearest(self.points, xnew)
-            dpaths = get_dubins_paths(self.radius, self.twists[vnearest], tnew)
-            viable_paths = dubins_collision_free(dpaths, self.radius, self.world)
+            try_paths = get_dubins_paths(self.radius, self.twists[vnearest], tnew)
+            viable_paths = dubins_collision_free(try_paths, self.radius, self.world)
             if len(viable_paths) > 0:
                 # add this path
                 vnew = len(self.points)
@@ -404,7 +405,7 @@ class RRTDubins(object):
                 dpath_disc = discretize_dubins_path(
                     *lcpath, self.radius, self.twists[vnearest], tnew
                 )
-                discrete_dpaths[(vnearest, vnew)] = dpath_disc
+                dpaths[(vnearest, vnew)] = {"discretized": dpath_disc, "path": lcpath}
 
                 if i % self.every:
                     gtwist = self.get_twist(xgoal, random.uniform(0, P2I))
@@ -416,21 +417,200 @@ class RRTDubins(object):
                         dpath_disc = discretize_dubins_path(
                             *goalpath, self.radius, tnew, gtwist
                         )
-                        discrete_dpaths[(vnew, vgoal)] = dpath_disc
+                        dpaths[(vnew, vgoal)] = {
+                            "discretized": dpath_disc,
+                            "path": lcpath,
+                        }
                         self.twists.append(gtwist)
-                        reached_goal = True
-            if i > 3000:
-                print("RRT failed to reach goal")
+                        # reached_goal = True
+            if i > 400:
+                # print("RRT failed to reach goal")
                 gv = nearest(self.points, xgoal)
                 break
             i += 1
 
-        for (i, j), dpath in discrete_dpaths.items():
-            T.add_edge(i, j, dpath=dpath)
+        for (i, j), dpath in dpaths.items():
+            T.add_edge(i, j, **dpath)
 
         print("Took {}s.".format(time.time() - t1))
 
         return T, gv
+
+
+def near(points, x, r):
+    """get idx of near points"""
+    near = []
+    for i, p in enumerate(points):
+        if r2norm(p - x) < r:
+            near.append(i)
+    return near
+
+
+class RRTStarDubins(RRTDubins):
+    def __init__(self, world, radius, r_rewire):
+        super().__init__(world, radius)
+        self.r_rewire = r_rewire
+        self.every = 100
+        self.pbar = True
+        self.tries = 1000
+
+    def near(self, x, r):
+        """get nodes within `r` of point `x`"""
+
+        dists = np.linalg.norm(self.points - x, axis=1)
+        return np.argwhere(dists < r)
+
+    def get_cost(self, v, x):
+        return self.vcosts[v] + r2norm(self.points[v] - x)
+
+    def get_parent(self, v):
+        for i, (e1, e2) in enumerate(self.edges):
+            if e2 == v:
+                return i
+        return None
+
+    def make(self, xstart, xgoal, hstart):
+        self.points.append(xstart)
+        self.headings.append(hstart)
+        tstart = self.get_twist(xstart, hstart)
+        self.twists.append(tstart)
+        self.vcosts.append(0.0)
+
+        dpaths = {}
+        reached_goal = False
+        i = 0
+        T = nx.DiGraph()
+        T.add_node(i, points=xstart, heading=hstart, twist=tstart)
+
+        if self.pbar:
+            pbar = tqdm(total=self.tries + 3, desc="tree")
+        while not reached_goal:
+            xnew = sample_all_free(self.free)
+            hnew = random.uniform(0, P2I)
+            tnew = self.get_twist(xnew, hnew)
+            vnearest = nearest(self.points, xnew)
+            try_paths = get_dubins_paths(self.radius, self.twists[vnearest], tnew)
+            viable_paths = dubins_collision_free(try_paths, self.radius, self.world)
+            if len(viable_paths) > 0:
+                vnew = len(self.points)
+                # get near points
+                vnears = near(self.points, xnew, self.r_rewire)
+
+                # calculate best cost
+                cbest = self.get_cost(vnearest, xnew)
+                vbest = vnearest
+                for vnear in vnears:
+                    xnear = self.points[vnear]
+                    cnear = self.get_cost(vnear, xnew)
+                    if cnear < cbest:
+                        # get dubins collision
+                        try_paths = get_dubins_paths(
+                            self.radius, self.twists[vnear], tnew
+                        )
+                        viable_paths = dubins_collision_free(
+                            try_paths, self.radius, self.world
+                        )
+                        if len(viable_paths) > 0:
+                            cbest = cnear
+                            vbest = vnear
+
+                # store new point, edge, dubins path, etc.
+                try_paths = get_dubins_paths(self.radius, self.twists[vbest], tnew)
+                viable_paths = dubins_collision_free(try_paths, self.radius, self.world)
+                lcpath = min(viable_paths, key=lambda path: sum(path[0]))
+
+                self.points.append(xnew)
+                self.twists.append(tnew)
+                self.headings.append(hnew)
+                self.edges.append((vbest, vnew))
+                self.vcosts.append(cbest)
+
+                dpath_disc = discretize_dubins_path(
+                    *lcpath, self.radius, self.twists[vbest], tnew
+                )
+                dpaths[(vbest, vnew)] = {"discretized": dpath_disc, "path": lcpath}
+
+                # rewire the tree now
+                for vnear in vnears:
+                    xnear = self.points[vnear]
+                    cnear = self.vcosts[vnear]
+                    possible_cost = self.get_cost(vnear, xnew)
+                    if possible_cost < cnear:
+                        try_paths = get_dubins_paths(
+                            self.radius, self.twists[vnear], tnew
+                        )
+                        viable_paths = dubins_collision_free(
+                            try_paths, self.radius, self.world
+                        )
+                        if len(viable_paths) > 0:
+                            # get parent of vnear
+                            parent = self.get_parent(vnear)
+                            if parent is not None:
+                                old_edge = self.edges[parent]
+                                self.edges[parent] = (vnew, vnear)
+                                self.vcosts[vnear] = possible_cost
+                                lcpath = min(
+                                    viable_paths, key=lambda path: sum(path[0])
+                                )
+                                dpath_disc = discretize_dubins_path(
+                                    *lcpath, self.radius, self.twists[vnear], tnew
+                                )
+                                # rewrite dpaths
+                                dpaths[old_edge] = {
+                                    "discretized": dpath_disc,
+                                    "path": lcpath,
+                                }
+                # attempt to go to goal
+                if i % self.every == 0:
+                    gtwist = self.get_twist(xgoal, random.uniform(0, P2I))
+                    goalpath = self.try2reachgoal(tnew, gtwist)
+                    if goalpath is not None:
+                        vgoal = len(self.points)
+                        gv = vgoal
+                        self.points.append(xgoal)
+                        dpath_disc = discretize_dubins_path(
+                            *goalpath, self.radius, tnew, gtwist
+                        )
+                        dpaths[(vnew, vgoal)] = {
+                            "discretized": dpath_disc,
+                            "path": lcpath,
+                        }
+                        self.twists.append(gtwist)
+                        self.edges.append((vnew, gv))
+                        self.vcosts.append(self.get_cost(vnew, xgoal))
+
+                        reached_goal = True
+            if self.pbar:
+                pbar.update(1)
+            if i > self.tries:
+                # print("RRT failed to reach goal")
+                gv = nearest(self.points, xgoal)
+                break
+            i += 1
+        if self.pbar:
+            pbar.update(1)
+            pbar.close()
+        for (i, j), dpath in dpaths.items():
+            T.add_edge(i, j, **dpath)
+        return T, gv
+
+
+def gotoroot(T: nx.DiGraph, leaf, path=[]):
+    """go to root of the tree from a leaf"""
+    try:
+        parent = T.predecessors(leaf).__next__()
+    except StopIteration:
+        return path
+    path.append((parent, leaf))
+    return gotoroot(T, parent, path)
+
+
+def get_directive(T: nx.DiGraph, edges):
+    """from a series of vertex edges, get directive"""
+    for e1, e2 in edges:
+        dpath = T[e1][e2]["path"]
+        lengths, circs, tanpts, angles, dirs = dpath
+        print(angles)
 
 
 if __name__ == "__main__":
@@ -439,28 +619,27 @@ if __name__ == "__main__":
     from matplotlib.collections import LineCollection
 
     wsize = (1024, 1024)
+    # world = np.zeros(wsize, dtype=bool)
     world = make_world(wsize, (2, 2))
     world |= make_world(wsize, (4, 4))
 
     xstart, xgoal = get_rand_start_end(world)
     hstart = PI
 
-    rrtd = RRTDubins(world, 16.0)
-    T, gv = rrtd.make(xstart, xgoal, hstart, 64)
+    rrtd = RRTStarDubins(world, 7.0, 256.0)
+    T, gv = rrtd.make(xstart, xgoal, hstart)
 
-    def gotoroot(T: nx.DiGraph, gv, path=[]):
-        try:
-            parent = T.predecessors(gv).__next__()
-        except StopIteration:
-            return path
-        path.append((parent, gv))
-        return gotoroot(T, parent, path)
+    # rrtd = RRTDubins(world, 16.0)
+    # T, gv = rrtd.make(xstart, xgoal, hstart, 64)
+
+    path = gotoroot(T, gv)
+    path = list(reversed(path))
 
     fig, ax = plt.subplots(dpi=150, figsize=(7, 3))
 
     ax.imshow(world.T, cmap=cm.get_cmap("Greys"))
 
-    dpaths = [T[e1][e2]["dpath"] for e1, e2 in T.edges()]
+    dpaths = [T[e1][e2]["discretized"] for (e1, e2) in T.edges()]
     lc = LineCollection(dpaths, color="tan")
     lc.set_label("Path")
     ax.add_collection(lc)
@@ -485,11 +664,12 @@ if __name__ == "__main__":
     ax.scatter(
         xgoal[0], xgoal[1], s=50, marker="*", c="dodgerblue", label="Goal", zorder=10
     )
+
     path = gotoroot(T, gv)
     pathline = []
     for (i, j) in reversed(path):
-        pathline.append(T[i][j]["dpath"])
-    pathlc = LineCollection(reversed(pathline), color="blue")
+        pathline.append(T[i][j]["discretized"])
+    pathlc = LineCollection(pathline, color="blue")
     ax.add_collection(pathlc)
     pathlc.set_label("Path")
 
