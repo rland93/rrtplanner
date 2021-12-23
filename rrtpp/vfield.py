@@ -2,6 +2,10 @@ import numpy as np
 import numba as nb
 from math import atan
 from rrt import RRTstar
+from scipy import spatial
+import networkx as nx
+import functools
+import pyvoronoi
 
 PI2 = np.pi / 2.0
 
@@ -29,6 +33,8 @@ def cross(v1, v2):
 
 def dist2line(p1, p2) -> callable:
     """get function that calculates distance to line between p1 and p2"""
+    if all(p1 == p2):
+        raise ValueError("p1 and p2 must not be equal")
 
     def dist(p):
         v = p2 - p1
@@ -42,6 +48,8 @@ def desired_course(chi_inf, d, k=0.2):
 
 
 if __name__ == "__main__":
+    from matplotlib import cm
+    from matplotlib.collections import LineCollection
     from rrt import RRTstar, get_rrt_LC
     from world_gen import make_world, get_rand_start_end
     import matplotlib.pyplot as plt
@@ -50,18 +58,91 @@ if __name__ == "__main__":
     fig, ax = plt.subplots(1, 2, figsize=(8, 4))
 
     # make world
-    w, h = 256, 256
-    world = np.zeros((w, h))
+    w, h = 64, 64
+    world = make_world((w, h), (16, 16))
+    world = world | make_world((w, h), (4, 4))
+    world = world | make_world((w, h), (2, 2))
     xstart, xgoal = get_rand_start_end(world)
+    world = np.zeros((w, h), dtype=int)
 
     # make RRTS
-    rrts = RRTstar(world, 100)
-    T = rrts.make(xstart, xgoal, 128)
+    rrts = RRTstar(world, 20)
+    T, gv = rrts.make(xstart, xgoal, 256)
 
     # plot RRT and world
     lc = get_rrt_LC(T)
     ax[1].add_collection(lc)
+    for a in ax:
+        a.scatter(xstart[0], xstart[1], c="r", s=50, label="start", marker="o")
+        a.scatter(xgoal[0], xgoal[1], c="b", s=50, label="goal", marker="*")
+        a.imshow(world.T, cmap="Greys", origin="lower")
+        a.set_xlim(0, w)
+        a.set_ylim(0, h)
 
+    # get voronoi regions
+    path = nx.shortest_path(T, 0, gv, weight="dist")
+    pv = pyvoronoi.Pyvoronoi(len(path) * 5)
+    pathlc = []
+    # identify paths that are in the center box
+    segmask = []
+    for i in range(len(path) - 1):
+        p1 = T.nodes[path[i]]["pos"]
+        p2 = T.nodes[path[i + 1]]["pos"]
+        pv.AddSegment([p1, p2])
+        segmask.append(True)
+        pathlc.append([p1, p2])
+        trans = [0, w, 0, h]
+        rot1 = [0, 0, 1, 1]
+        rot2 = [1, 1, 0, 0]
+        for t, r1, r2 in zip(trans, rot1, rot2):
+            # it's getting late
+            a, b = [None, None], [None, None]
+            a[r1] = p1[r1] + ((t - p1) * 2)[r1]
+            b[r1] = p2[r1] + ((t - p2) * 2)[r1]
+            a[r2] = p1[r2]
+            b[r2] = p2[r2]
+            pv.AddSegment([a, b])
+            segmask.append(False)
+    segmask = np.array(segmask)
+
+    # plot voronoi
+    pv.Construct()
+    cells = pv.GetCells()
+    edges = pv.GetEdges()
+    vertices = pv.GetVertices()
+
+    lcs = []
+    for i, c in enumerate(cells):
+        cell_lines = []
+        if segmask[c.site]:
+            for edge in c.edges:
+                v1 = edges[edge].start
+                v2 = edges[edge].end
+                if v1 != -1:
+                    p1 = vertices[v1]
+                    p1 = np.array((p1.X, p1.Y))
+                else:
+                    p1 = None
+                if v2 != -1:
+                    p2 = vertices[v2]
+                    p2 = np.array((p2.X, p2.Y))
+                else:
+                    p2 = None
+
+                if p1 is not None and p2 is not None:
+                    cell_lines.append((p1, p2))
+            lcs.append(LineCollection(cell_lines, color="green", alpha=0.5))
+
+    for lc in lcs:
+        ax[0].add_collection(lc)
+    ax[0].add_collection(LineCollection(pathlc, color="red"))
+
+    ax[0].set_xlim(-w * 0.1, w * 1.1)
+    ax[0].set_ylim(-h * 0.1, h * 1.1)
+
+    plt.show()
+
+    """
     # all edge points
     epoints = np.empty((len(T.edges), 2, 2))
     for i, (e1, e2) in enumerate(T.edges):
@@ -100,6 +181,7 @@ if __name__ == "__main__":
         width=0.1,
         units="xy",
     )
+    """
     plt.show()
 
     # import matplotlib.pyplot as plt
