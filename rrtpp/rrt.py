@@ -1,14 +1,17 @@
 import numpy as np
-import networkx as nx
-from scipy.linalg import svd, det, norm
+import numba as nb
+from matplotlib.collections import LineCollection
+from math import sqrt
 from tqdm import tqdm
-from matplotlib.patches import Ellipse
+import networkx as nx
 
-# from matplotlib import cm
-# from matplotlib.colors import Normalize
-# import matplotlib.pyplot as plt
-from math import sqrt, sin, cos
-import numba
+
+def get_rrt_LC(T, c="grey"):
+    lines = []
+    for e1, e2 in T.edges:
+        pt1, pt2 = T.nodes[e1]["point"], T.nodes[e2]["point"]
+        lines.append((pt1, pt2))
+    return LineCollection(lines, color=c)
 
 
 def get_rand_start_end(world, bias=True):
@@ -26,19 +29,19 @@ def get_rand_start_end(world, bias=True):
     return start, end
 
 
-@numba.njit(fastmath=True)
+@nb.njit(fastmath=True)
 def sample_all_free(free):
     """sample uniformly from free space in the world."""
     return free[np.random.choice(free.shape[0])]
 
 
-@numba.njit(fastmath=True)
+@nb.njit(fastmath=True)
 def norm(u, v):
     d = u - v
     return sqrt(d[0] * d[0] + d[1] * d[1])
 
 
-@numba.njit(fastmath=True)
+@nb.njit(fastmath=True)
 def collisionfree(world, a, b) -> bool:
     """calculate linear collision on world between points a, b"""
     x0 = a[0]
@@ -59,9 +62,9 @@ def collisionfree(world, a, b) -> bool:
     x0_old, y0_old = x0, y0
     while True:
         if world[x0, y0] == 1:
-            return False, np.array([x0_old, y0_old])
+            return False
         elif x0 == x1 and y0 == y1:
-            return True, None
+            return True
         else:
             x0_old, y0_old = x0, y0
             e2 = 2 * err
@@ -73,341 +76,131 @@ def collisionfree(world, a, b) -> bool:
                 y0 += sy
 
 
+@nb.njit(fastmath=True)
+def r2norm(x):
+    return sqrt(x[0] * x[0] + x[1] * x[1])
+
+
 def nearest(points, x):
-    """get a list of the nodes sorted by distance to point `x`, nearest first"""
-    dists = np.linalg.norm((points - x), axis=1)
-    dists_sorted = np.argsort(dists)
-    return dists_sorted
+    near = []
+    for p in points:
+        near.append(r2norm(p - x))
+    return np.argmin(near)
+
+
+def near(points, x, r):
+    """find idx of points within r of x"""
+    near = []
+    for i, p in enumerate(points):
+        if r2norm(p - x) < r:
+            near.append(i)
+    return near
 
 
 class RRTvec(object):
     """base class containing common RRT methods"""
 
-    def __init__(self, world, n, dubins=False, pbar=True):
+    def __init__(self, world, n, every=10, pbar=True):
         # the world
         self.world = np.array(world)
         # whether to display a progress bar
         self.pbar = pbar
+        # every n tries, attempt to go to goal
+        self.every = every
         # array containing vertex points
         self.n = n
-        # points, N+1 x 2
-        self.points = np.full((n, 2), np.iinfo(np.int64).max, dtype=np.int64)
-        # edges (matrix) N+1 x N+1
-        self.edges = np.zeros((n, n), dtype=bool)
-        # costs (array) N+1 x 1
-        self.vcosts = np.full((n, 1), np.Infinity, dtype=float)
+        self.points = []
+        self.edges = {}
+        self.vcosts = []
         # world free space
         self.free = np.argwhere(world == 0)
 
-    def clamp_arr(self, point):
-        """clamp input 2d array so that it is in the world"""
-        wshape = self.world.shape
-        # clamp lower
-        c_lower = np.maximum(np.array([0, 0]), point)
-        # clamp upper
-        c_upper = np.minimum(np.array(wshape), c_lower)
-        return np.int64(c_upper)
-
-    def get_parent(self, v):
-        """get first parent of node `v`. If a parent does not exist,
-        return None."""
-        return np.argwhere(self.edges[:, v] == 1)[0]
-
-    def near(self, x, r):
-        """get nodes within `r` of point `x`"""
-        dists = np.linalg.norm(self.points - x, axis=1)
-        return np.argwhere(dists < r)
-
-    def update_world(self, neww):
-        self.world = neww
-        self.free = np.argwhere(neww == 0)
-
-    def calc_cost(self, v, x):
-        return self.vcosts[v] + norm(self.points[v], x)
-
-    def try_goal(self, xgoal):
-        self.points[-1] = xgoal
-        dists = np.linalg.norm(self.points - xgoal)
-        closest = np.argsort(dists)
-        dists = dists[closest]
-        idxs = np.arange(0, self.n + 2)[closest]
-        points = self.points[closest]
-        for i, p, d in zip(idxs, points, dists):
-            if collisionfree(self.world, p, xgoal):
-                self.edges[i, -1] = 1
-
 
 class RRTstar(RRTvec):
-    def __init__(self, world, n):
-        super().__init__(world, n)
+    def __init__(self, world, n, every=100, pbar=True):
+        super().__init__(world, n, every=every, pbar=pbar)
+
+    def get_cost(self, v, x):
+        return self.vcosts[v] + r2norm(self.points[v] - x)
 
     def make(self, xstart, xgoal, r_rewire):
-        xstart = self.clamp_arr(xstart)
-        xgoal = self.clamp_arr(xgoal)
-
-        # store xstart into points
-        self.points[0, :] = xstart
-        # store costs
-        self.vcosts[0] = 0.0
-        i = 1
+        reached_goal = False
+        self.points.append(xstart)
+        self.vcosts.append(0.0)
+        i = 0
         if self.pbar:
-            pbar = tqdm(total=self.n, desc="tree")
-        while i < self.n:
+            pbar = tqdm(total=self.n)
+        while not reached_goal:
             xnew = sample_all_free(self.free)
             vnearest = nearest(self.points, xnew)
-            xnearest = self.points[vnearest[0]]
-            nocoll = collisionfree(self.world, xnearest, xnew)
-
-            if nocoll[0] and np.all(xnearest != xnew):
-                vnew = i
-                vbest = vnearest[0]
-
-                vnear = self.near(xnew, r_rewire)
-                vnear = vnear.reshape(vnear.shape[0])
-
-                cbest = self.calc_cost(vbest, xnew)
-                for vn in vnear:
-                    xn = self.points[vn]
-                    cn = self.calc_cost(vn, xnew)
-                    if cn < cbest:
-                        if collisionfree(self.world, xn, xnew)[0]:
-                            cbest = cn
-                            vbest = vn
-
+            if collisionfree(self.world, self.points[vnearest], xnew):
+                # get near points
+                vnears = near(self.points, xnew, r_rewire)
+                cbest = self.get_cost(vnearest, xnew)
+                vbest = vnearest
+                for vnear in vnears:
+                    cnear = self.get_cost(vnear, xnew)
+                    xnear = self.points[vnear]
+                    if cnear < cbest:
+                        if collisionfree(self.world, self.points[vnear], xnear):
+                            cbest = cnear
+                            vbest = vnear
                 # store new point
-                self.points[i] = xnew
-                self.vcosts[i] = cbest
-                # store new edge
-                self.edges[vbest, vnew] = 1
+                vnew = len(self.points)
+                self.points.append(xnew)
+                self.vcosts.append(cbest)
+                self.edges[vnew] = vnearest
 
-                # tree rewire
-                for vn in vnear:
-                    xn = self.points[vn]
-                    cn = self.vcosts[vn]
-                    possible_cost = self.calc_cost(vn, xnew)
-                    if possible_cost < cn:
-                        if collisionfree(self.world, xn, xnew)[0]:
-                            parent = self.get_parent(vn)
-                            if parent is not None:
-                                self.edges[parent, vn] = 0
-                                self.edges[vnew, vn] = 1
-                                self.vcosts[vn] = possible_cost
-                if self.pbar:
-                    pbar.update(1)
-                i += 1
+                # rewire the tree
+                for vnear in vnears:
+                    xnear = self.points[vnear]
+                    cnear = self.vcosts[vnear]
+                    possible_cost = self.get_cost(vnear, xnew)
+                    if possible_cost < cnear:
+                        if collisionfree(self.world, xnear, xnew):
+                            self.edges[vnear] = vnew
 
-        T = nx.convert_matrix.from_numpy_array(self.edges, create_using=nx.DiGraph)
-        for e1, e2 in T.edges:
-            T[e1][e2]["cost"] = self.vcosts[e1]
+                # attempt go-to-goal
+                if i % self.every == 0:
+                    if collisionfree(self.world, xnew, xgoal):
+                        reached_goal = True
+                        vgoal = len(self.points)
+                        self.points.append(xgoal)
+                        self.edges[vgoal] = vnew
+                        self.vcosts.append(self.get_cost(vnew, xgoal))
+                        gv = vgoal
+            if i > self.n:
+                gv = nearest(self.points, xgoal)
+                break
+
+            if self.pbar:
+                pbar.update(1)
+            i += 1
 
         if self.pbar:
-            pbar.update(1)
             pbar.close()
 
-        return T
+        T = nx.DiGraph()
+        for e1, e2 in self.edges.items():
+            T.add_edge(e1, e2)
+
+        for i, p in enumerate(self.points):
+            T.nodes[i]["point"] = p
+
+        return T, gv
 
 
-class RRTstandard(RRTvec):
-    def __init__(self, world, n):
-        super().__init__(world, n)
+if __name__ == "__main__":
+    import matplotlib.pyplot as plt
+    from world_gen import make_world, get_rand_start_end
 
-    def make(self, xstart, xgoal):
-        """Make RRT standard tree with `N` points from xstart to xgoal.
-        Returns the tree, the start node, and the end node."""
-        xstart = self.clamp_arr(xstart)
-        xgoal = self.clamp_arr(xgoal)
-        # store xstart into points
-        self.points[0, :] = xstart
-        # store costs
-        self.vcosts[0] = 0.0
-        i = 1
-        if self.pbar:
-            pbar = tqdm(total=self.n, desc="tree")
-        while i < self.n:
-            xnew = sample_all_free(self.free)
-            vnearest = self.nearest_nodes(xnew)
-            xnearest = self.points[vnearest[0]]
-            nocoll = collisionfree(self.world, xnearest, xnew)
-            if nocoll[0] and np.all(xnearest != xnew):
-                vnew = i
-                # store point
-                self.points[vnew] = xnew
-                # store cost
-                self.vcosts[vnew] = self.calc_cost(vnearest[0], x=xnew)
-                # store edge
-                self.edges[vnearest[0], vnew] = 1
+    w, h = 512, 512
+    world = make_world((w, h), (4, 4))
+    xstart, xgoal = get_rand_start_end(world)
 
-                if self.pbar:
-                    pbar.update(1)
-                i += 1
-        if self.pbar:
-            pbar.update(1)
-            pbar.close()
-
-        T = nx.convert_matrix.from_numpy_array(self.edges.T, create_using=nx.DiGraph)
-        for e1, e2 in T.edges:
-            T[e1][e2]["cost"] = self.vcosts[e1]
-        return T
-
-
-class RRTinformed(RRTvec):
-    def __init__(self, world, n, r_goal):
-        super().__init__(world, n)
-        self.r_goal = r_goal
-
-    @staticmethod
-    def unitball():
-        r = np.random.uniform(0.0, 1.0)
-        theta = 2 * np.pi * np.random.uniform(0, 1)
-        x = sqrt(r) * cos(theta)
-        y = sqrt(r) * sin(theta)
-        unif = np.array([x, y])
-        return unif
-
-    def sample_ellipse(self, xstart, xgoal, cmin, cbest, clamp=True):
-        xcent = (xstart + xgoal) / 2
-        CL = self.get_ellipse_xform(xstart, xgoal, cmin, cbest)
-        xball = self.unitball()
-        x, y = tuple(np.dot(CL, xball) + xcent)
-
-        if clamp:
-            # clamp to finite world
-            x = int(max(0, min(self.world.shape[0] - 1, x)))
-            y = int(max(0, min(self.world.shape[1] - 1, y)))
-        return np.array((x, y))
-
-    def rotation_to_world_frame(self, xstart, xgoal):
-        """calculate the rotation matrix from the world-frame to the frame given
-        by the hyperellipsoid with focal points at xf1=xstart and xf2=xgoal. a unit
-        ball multiplied by this matrix will produce an oriented ellipsoid with those
-        focal points."""
-        a1 = np.atleast_2d((xgoal - xstart) / norm(xgoal, xstart))
-        M = np.outer(a1, np.atleast_2d([1, 0]))
-        U, _, V = svd(M)
-        return U @ np.diag([det(U), det(V)]) @ V.T
-
-    def get_ellipse_xform(self, xstart, xgoal, cmin, cbest):
-        """transform vector in unit plane to ellipse plane"""
-        # rotation matrix
-        C = self.rotation_to_world_frame(xstart, xgoal)
-
-        assert cbest > cmin
-        r1 = sqrt(cbest * cbest - cmin * cmin) / 2
-        r2 = cbest / 2
-
-        L = np.diag([r2, r1])
-        # dot rotation with scale to get final matrix
-        return np.dot(C, L)
-
-    @staticmethod
-    def rad2deg(a):
-        return a * 180 / np.pi
-
-    def get_ellipse_mpl_patch(self, xstart, xgoal, cmin, cbest, color=None):
-        xcent = (xgoal + xstart) / 2
-
-        # get the rotation
-        CL = self.get_ellipse_xform(xstart, xgoal, cmin, cbest)
-
-        # apply the rotation to find major axis, minor axis, angle
-        a = np.dot(CL, np.array([1, 0]))
-        b = np.dot(CL, np.array([0, 1]))
-        majax = 2 * np.linalg.norm(a)
-        minax = 2 * np.linalg.norm(b)
-        ang = self.rad2deg(np.arctan2((a)[1], (a)[0]))
-
-        if color == None:
-            color = "m"
-
-        return Ellipse(xcent, majax, minax, ang, fill=None, ec=color)
-
-    def least_cost(self, vsoln):
-        if len(vsoln) == 1:
-            # just return the single element
-            return vsoln[0], self.vcosts[vsoln[0]][0]
-        else:
-            # find the min
-            csorted = np.argmin(self.vcosts[vsoln])
-            return vsoln[csorted], self.vcosts[vsoln[csorted]][0]
-
-    def make(self, xstart, xgoal, r_rewire):
-        xstart = self.clamp_arr(xstart)
-        xgoal = self.clamp_arr(xgoal)
-        cmin = norm(xstart, xgoal)
-        vsoln = list()
-        # store xstart into points
-        self.points[0, :] = xstart
-        # store costs
-        self.vcosts[0] = 0.0
-        i = 1
-        if self.pbar:
-            pbar = tqdm(total=self.n, desc="tree")
-        while i < self.n:
-            if len(vsoln) == 0:
-                xnew = sample_all_free(self.free)
-            else:
-                vbest, cbest = self.least_cost(vsoln)
-                cbest += norm(self.points[vbest], xgoal)
-                xnew = self.sample_ellipse(xstart, xgoal, cmin, cbest)
-
-                ########### plot the ellipse
-                # ax = plt.gca()
-                # # get color
-                # ellcolor_val = float(i) / self.n
-                # color = cm.get_cmap("Greys")(ellcolor_val)
-                # ax.add_patch(
-                #     self.get_ellipse_mpl_patch(xstart, xgoal, cmin, cbest, color=color)
-                # )
-
-            vbest = nearest(self.points, xnew)[0]
-            xnearest = self.points[vbest]
-            nocoll = collisionfree(self.world, xnearest, xnew)
-            if nocoll[0]:
-                vnew = i
-                vnear = self.near(xnew, r_rewire)
-                vnear = vnear.reshape(vnear.shape[0])
-                cbest = self.calc_cost(vbest, xnew)
-
-                for vn in vnear:
-                    xn = self.points[vn]
-                    cn = self.calc_cost(vn, xnew)
-                    if cn < cbest:
-                        if collisionfree(self.world, xn, xnew)[0]:
-                            cbest = cn
-                            vbest = vn
-
-                # store new point
-                self.points[vnew] = xnew
-                self.vcosts[vnew] = cbest
-                # store new edge
-                self.edges[vbest, vnew] = 1
-
-                # tree rewire
-                for vn in vnear:
-                    xn = self.points[vn]
-                    cn = self.vcosts[vn]
-                    possible_cost = self.calc_cost(vn, xnew)
-                    if possible_cost < cn:
-                        if collisionfree(self.world, xn, xnew)[0]:
-                            parent = self.get_parent(vn)
-                            if parent is not None:
-                                self.edges[parent, vn] = 0
-                                self.edges[vnew, vn] = 1
-                                self.vcosts[vn] = possible_cost
-
-                if norm(xnew, xgoal) < self.r_goal:
-                    vsoln.append(vnew)
-
-                if self.pbar:
-                    pbar.update(1)
-                i += 1
-
-        T = nx.convert_matrix.from_numpy_array(self.edges, create_using=nx.DiGraph)
-        for e1, e2 in T.edges:
-            T[e1][e2]["cost"] = self.vcosts[e1]
-
-        if self.pbar:
-            pbar.update(1)
-            pbar.close()
-
-        return T
+    rrts = RRTstar(world, 10000, every=10000, pbar=True)
+    T, gv = rrts.make(xstart, xgoal, r_rewire=64)
+    fig, ax = plt.subplots()
+    ax.add_collection(get_rrt_LC(T))
+    ax.imshow(world.T, cmap="Greys", origin="lower")
+    plt.show()
