@@ -2,30 +2,58 @@
 
 ![Screenshot of RRTstar path](./Figure_1.png)
 
-This package contains the standard RRT and RRT* algorithms, written in python, as well as the variant RRT* Informed.
+This repository contains my planning algorithm research code. It has modules for creating random or dynamic occupancy grids on which to generate plans, utilities for plotting and animating plans, and implementations of the RRT, RRT*, and RRT-Informed planners. 
 
-See also:
+## Features
 
-+ [LaValle's RRT Page.](http://lavalle.pl/rrt/)
+Utility Modules:
++ Random World Generation with Perlin Noise
++ Animation Module
++ Dubins Primitive Module
 
-+ [RRT * Paper](https://arxiv.org/abs/1005.0416)
+Planning Modules:
++ RRT Planner
++ RRT(star) Planner
++ RRT(informed) Planner
++ Dubins Vehicle RRT Planner
++ Dubins Vehicle RRT(star) Planner
 
-+ [Informed RRT* Paper](https://arxiv.org/abs/1404.2334v3)
+Path Following Modules:
++ Straight Line Vector-Field Path-Follower
++ Decomposition of multi-waypoint plan for vector-field follower using voronoi regions
 
-It uses networkx graphs with points assigned to nodes as datastructures for the trees. It uses Bresenham's line collision algorithm to calculate collisions with obstacles.
+All algorithms are written in Python. I've tried to accelerate some things with Numba; so, your platform needs to be [compatible with numba](https://numba.readthedocs.io/en/stable/user/installing.html). But for the most part, it's standard python, and as such, is extremely slow.
 
-The test worlds are made from Perlin noise.
+This is research code, so it's not *at all* a robust package to use for a real planner. Let me know how you are using it!
 
-Slices of 3-d perlin noise are used to simulate dynamic environments; those can be animated with the animation module.
+## Dependency Quirks
 
-## Installation
-
-```bash
-pip install git+https://github.com/rland93/rrt_pathplanner
-```
-
-Also requires the [`perlin-numpy`](https://github.com/pvigier/perlin-numpy) package to make the random worlds. You need to install that one manually:
-
+It relies on [`perlin-numpy`](https://github.com/pvigier/perlin-numpy) package to make the random worlds, which is not listed on PyPi. To install manually:
 ```bash
 pip install git+https://github.com/pvigier/perlin-numpy
 ```
+
+It relies on Numba to accelerate some collision logic:
+
+https://numba.readthedocs.io/en/stable/user/installing.html
+
+## Information:
+
+RRT:
+
++ [LaValle's RRT Page.](http://lavalle.pl/rrt/)
++ [RRT * Paper](https://arxiv.org/abs/1005.0416)
++ [Informed RRT* Paper](https://arxiv.org/abs/1404.2334v3)
+
+Planners:
+
++ [Planning Algorithms](http://lavalle.pl/planning/)
+
+Path Followers:
+
++ [Vector Field Path Following for Miniature Air Vehicles](https://ieeexplore.ieee.org/document/4252175)
++ [Unmanned Aerial Vehicle Path Following: A Survey and Analysis of Algorithms for Fixed-Wing Unmanned Aerial Vehicles](https://ieeexplore.ieee.org/document/6712082)
+
+Also requires the  You need to install that one manually:
+
+
