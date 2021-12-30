@@ -4,9 +4,10 @@ from matplotlib.collections import LineCollection
 from math import sqrt
 from tqdm import tqdm
 import networkx as nx
+from typing import Tuple
 
 
-def get_rrt_LC(T, c="grey"):
+def get_rrt_LC(T: nx.DiGraph, c: str = "grey") -> LineCollection:
     lines = []
     for e1, e2 in T.edges():
         pt1, pt2 = T.nodes[e1]["pos"], T.nodes[e2]["pos"]
@@ -14,7 +15,9 @@ def get_rrt_LC(T, c="grey"):
     return LineCollection(lines, color=c)
 
 
-def get_rand_start_end(world, bias=True):
+def get_rand_start_end(
+    world: np.ndarray, bias: bool = True
+) -> Tuple[np.ndarray, np.ndarray]:
     """get random free start, end in the world"""
     free = np.argwhere(world == 0)
     """if bias, prefer points far away from one another"""
@@ -29,7 +32,7 @@ def get_rand_start_end(world, bias=True):
     return start, end
 
 
-def sample_all_free(free):
+def sample_all_free(free: np.ndarray) -> np.ndarray:
     """sample uniformly from free space in the world."""
     return free[np.random.choice(free.shape[0])]
 
@@ -39,7 +42,7 @@ def norm(u, v):
     return sqrt(d[0] * d[0] + d[1] * d[1])
 
 
-def collisionfree(world, a, b) -> bool:
+def collisionfree(world: np.ndarray, a: np.ndarray, b: np.ndarray) -> bool:
     """calculate linear collision on world between points a, b"""
     x0 = a[0]
     y0 = a[1]
@@ -74,18 +77,18 @@ def collisionfree(world, a, b) -> bool:
 
 
 @nb.njit(fastmath=True)
-def r2norm(x):
+def r2norm(x: np.ndarray):
     return sqrt(x[0] * x[0] + x[1] * x[1])
 
 
-def nearest(points, x):
+def nearest(points: np.ndarray, x: np.ndarray) -> int:
     near = []
     for p in points:
         near.append(r2norm(p - x))
     return np.argmin(near)
 
 
-def near(points, x, r):
+def near(points: np.ndarray, x: np.ndarray, r: float) -> np.ndarray:
     """find idx of points within r of x"""
     near = []
     for i, p in enumerate(points):
@@ -97,7 +100,7 @@ def near(points, x, r):
 class RRT(object):
     """base class containing common RRT methods"""
 
-    def __init__(self, world, n, every=10, pbar=True):
+    def __init__(self, world: np.ndarray, n: int, every: int = 10, pbar: bool = True):
         # whether to display a progress bar
         self.pbar = pbar
         # every n tries, attempt to go to goal
@@ -112,14 +115,16 @@ class RRT(object):
 
 
 class RRTstar(RRT):
-    def __init__(self, world, n, every=100, pbar=True):
+    def __init__(self, world: np.ndarray, n: int, every: int = 100, pbar: bool = True):
         super().__init__(world, n, every=every, pbar=pbar)
 
     @staticmethod
-    def cost(vcosts, points, v, x):
+    def cost(vcosts: np.ndarray, points: np.ndarray, v: int, x: np.ndarray) -> float:
         return vcosts[v] + r2norm(points[v] - x)
 
-    def make(self, xstart, xgoal, r_rewire):
+    def make(
+        self, xstart: np.ndarray, xgoal: np.ndarray, r_rewire: float
+    ) -> Tuple[nx.DiGraph, int]:
         points = np.full((self.n, 2), dtype=int, fill_value=1e4)
         vcosts = np.full((self.n,), fill_value=np.inf)
         edges, parents = {}, {}
