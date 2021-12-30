@@ -4,8 +4,6 @@ from math import sqrt
 from tqdm import tqdm
 import networkx as nx
 from typing import Tuple
-from matplotlib import cm
-from matplotlib.patches import Ellipse
 
 ############# RRT BASE CLASS ##################################################
 
