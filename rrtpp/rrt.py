@@ -29,19 +29,16 @@ def get_rand_start_end(world, bias=True):
     return start, end
 
 
-@nb.njit(fastmath=True)
 def sample_all_free(free):
     """sample uniformly from free space in the world."""
     return free[np.random.choice(free.shape[0])]
 
 
-@nb.njit(fastmath=True)
 def norm(u, v):
     d = u - v
     return sqrt(d[0] * d[0] + d[1] * d[1])
 
 
-@nb.njit(fastmath=True)
 def collisionfree(world, a, b) -> bool:
     """calculate linear collision on world between points a, b"""
     x0 = a[0]
@@ -123,9 +120,8 @@ class RRTstar(RRTvec):
         return vcosts[v] + r2norm(points[v] - x)
 
     def make(self, xstart, xgoal, r_rewire):
-        points, vcosts = np.full((self.n, 2), dtype=int, fill_value=1e20), np.full(
-            (self.n,), fill_value=np.inf
-        )
+        points = np.full((self.n, 2), dtype=int, fill_value=1e4)
+        vcosts = np.full((self.n,), fill_value=np.inf)
         edges, parents = {}, {}
         points[0] = xstart
         vcosts[0] = 0

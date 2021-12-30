@@ -4,8 +4,11 @@ from math import atan
 from rrt import RRTstar
 from scipy import spatial
 import networkx as nx
-import functools
+from itertools import product
 import pyvoronoi
+from collections import defaultdict
+from shapely import geometry
+from shapely.ops import unary_union
 
 PI2 = np.pi / 2.0
 
@@ -43,8 +46,129 @@ def dist2line(p1, p2) -> callable:
     return dist
 
 
-def desired_course(chi_inf, d, k=0.2):
-    return -chi_inf * (2.0 / np.pi) * atan(k * d)
+def get_voronoi_regions(path) -> dict:
+    pv = pyvoronoi.Pyvoronoi(len(path) * 5)
+    segmask, segs = [], []
+
+    for p1, p2 in path:
+        pv.AddSegment([p1, p2])
+        # we will actually use this segment
+        segmask.append(True)
+        segs.append([p1, p2])
+
+        # now, we reflect across x=0, y=0, x=w, y=h
+        # so that voronoi cells are finite
+        trans = [0, w, 0, h]
+        rot1 = [0, 0, 1, 1]
+        rot2 = [1, 1, 0, 0]
+        for t, r1, r2 in zip(trans, rot1, rot2):
+            a, b = [None, None], [None, None]
+            a[r1] = p1[r1] + ((t - p1) * 2)[r1]
+            b[r1] = p2[r1] + ((t - p2) * 2)[r1]
+            a[r2] = p1[r2]
+            b[r2] = p2[r2]
+            pv.AddSegment([a, b])
+            # we will discard these (hence segmask == False)
+            # after the voronoi cells are made, but we still add
+            # them so that we can use the voronoi indices with `segs` array
+            segmask.append(False)
+            segs.append([a, b])
+
+    segmask = np.array(segmask)
+
+    # create the voronoi and unpack
+    pv.Construct()
+    cells = pv.GetCells()
+    edges = pv.GetEdges()
+    vertices = pv.GetVertices()
+
+    # we unpack the voronoi cells
+    rawpolys = defaultdict(list)
+    for i, c in tqdm(enumerate(cells), desc="create voronoi cells"):
+        cell_lines = []
+        # only use non-reflected cells
+        if segmask[c.site]:
+            for edge in c.edges:
+                # get the two points of the edge
+                p1 = vertices[edges[edge].start]
+                p2 = vertices[edges[edge].end]
+                # unpack to np arr
+                p1 = np.array((p1.X, p1.Y))
+                p2 = np.array((p2.X, p2.Y))
+                # now cell lines are made from those points
+                cell_lines.append((p1, p2))
+            # list -> np arr
+            cell_lines = np.array(cell_lines)
+            # cell lines are (2,2) arras, but we actually want
+            # a list of points to construct shapely geometry. So
+            # array transformed from (M x 2 x 2) -> (M * 2 x 2)
+            # with x, y on axis=-1.
+            cell_points = cell_lines.reshape(cell_lines.shape[0] * 2, 2)
+            # each line is joined with the next line in the polygon.
+            # so let's say we have a poly with vertices [0,0], [1,0], [1,1]
+            # that is actually a collection of 3 2x2 arrays, one for each line:
+            # [ [0,0],[1,0] ], [ [1,0], [1,1] ], [ [1,1], [0,0]]. When unpacked,
+            # this is flattened to just the points:
+            # [ [0,0], [1,0], [1,0], [1,1], [1,1], [0,0] ] this array of points
+            # has duplicates for every other element, so we remove those duplicates.
+            cell_points = cell_points[::2, :]
+            # make a polygon from the points
+            rawpolys[c.site].append(geometry.Polygon(cell_points))
+
+    # store polygons into a nicer format
+    polys = {}
+
+    # integer points
+    points = np.stack(np.meshgrid(np.arange(w), np.arange(h)), axis=-1)
+    geom_points = geometry.MultiPoint(points.reshape(w * h, 2))
+
+    for k, v in tqdm(rawpolys.items(), desc="unpack voronoi cells"):
+        # get hull
+        polygons = geometry.MultiPolygon(v)
+        union = unary_union(polygons)
+
+        # get integer points that are in polygon
+        points_in_poly = polygons.intersection(geom_points)
+        points_in_poly = np.squeeze(
+            np.array([np.int64(p.xy) for p in points_in_poly.geoms])
+        )
+        # get dists to line for each xy
+        d2l = dist2line(segs[k][0], segs[k][1])
+        dists = np.apply_along_axis(d2l, 1, points_in_poly)
+
+        # get chi for this segment
+        seg = np.array(segs[k])
+        chi = np.arctan2(seg[1, 1] - seg[0, 1], seg[1, 0] - seg[0, 0])
+
+        # get lines of hull
+        union_lines = np.array(union.exterior.coords)
+
+        polys[k] = {
+            "cell": union,
+            "cell_lines": union_lines,
+            "seg": seg,
+            "xys": points_in_poly,
+            "dists": dists,
+            "chi": chi,
+        }
+    return polys
+
+
+def get_angles(polys, k=0.2):
+    dists = np.zeros((w, h))
+    angles = np.zeros((w, h))
+    points = integer_points((w, h))
+
+    for poly in tqdm(polys.values(), desc="calculate angles"):
+        course = -np.arctan(k * poly["dists"]) + poly["chi"]
+        angles[poly["xys"][:, 0], poly["xys"][:, 1]] = course
+        dists[poly["xys"][:, 0], poly["xys"][:, 1]] = poly["dists"]
+
+    return dists, angles, points
+
+
+def integer_points(wh):
+    return np.stack(np.meshgrid(np.arange(w), np.arange(h)), axis=-1)
 
 
 if __name__ == "__main__":
@@ -54,19 +178,18 @@ if __name__ == "__main__":
     from world_gen import make_world, get_rand_start_end
     import matplotlib.pyplot as plt
     from tqdm import tqdm
+    from matplotlib.colors import Normalize
 
     fig, ax = plt.subplots(1, 2, figsize=(8, 4))
 
     # make world
-    w, h = 64, 64
-    world = make_world((w, h), (16, 16))
-    world = world | make_world((w, h), (4, 4))
-    world = world | make_world((w, h), (2, 2))
+    w, h = 128, 64
+    world = make_world((w, h), (int(w / 32), int(h / 32)))
+    world = world | make_world((w, h), (int(4), int(4)))
     xstart, xgoal = get_rand_start_end(world)
-    world = np.zeros((w, h), dtype=int)
 
     # make RRTS
-    rrts = RRTstar(world, 20)
+    rrts = RRTstar(world, 600)
     T, gv = rrts.make(xstart, xgoal, 256)
 
     # plot RRT and world
@@ -80,149 +203,34 @@ if __name__ == "__main__":
         a.set_ylim(0, h)
 
     # get voronoi regions
-    path = nx.shortest_path(T, 0, gv, weight="dist")
-    pv = pyvoronoi.Pyvoronoi(len(path) * 5)
-    pathlc = []
-    # identify paths that are in the center box
-    segmask = []
-    for i in range(len(path) - 1):
-        p1 = T.nodes[path[i]]["pos"]
-        p2 = T.nodes[path[i + 1]]["pos"]
-        pv.AddSegment([p1, p2])
-        segmask.append(True)
-        pathlc.append([p1, p2])
-        trans = [0, w, 0, h]
-        rot1 = [0, 0, 1, 1]
-        rot2 = [1, 1, 0, 0]
-        for t, r1, r2 in zip(trans, rot1, rot2):
-            # it's getting late
-            a, b = [None, None], [None, None]
-            a[r1] = p1[r1] + ((t - p1) * 2)[r1]
-            b[r1] = p2[r1] + ((t - p2) * 2)[r1]
-            a[r2] = p1[r2]
-            b[r2] = p2[r2]
-            pv.AddSegment([a, b])
-            segmask.append(False)
-    segmask = np.array(segmask)
+    # path = nx.shortest_path(T, 0, gv, weight="dist")
 
-    # plot voronoi
-    pv.Construct()
-    cells = pv.GetCells()
-    edges = pv.GetEdges()
-    vertices = pv.GetVertices()
+    edges = [(T.nodes[e1]["pos"], T.nodes[e2]["pos"]) for (e1, e2) in T.edges()]
 
-    lcs = []
-    for i, c in enumerate(cells):
-        cell_lines = []
-        if segmask[c.site]:
-            for edge in c.edges:
-                v1 = edges[edge].start
-                v2 = edges[edge].end
-                if v1 != -1:
-                    p1 = vertices[v1]
-                    p1 = np.array((p1.X, p1.Y))
-                else:
-                    p1 = None
-                if v2 != -1:
-                    p2 = vertices[v2]
-                    p2 = np.array((p2.X, p2.Y))
-                else:
-                    p2 = None
+    polys = get_voronoi_regions(edges)
 
-                if p1 is not None and p2 is not None:
-                    cell_lines.append((p1, p2))
-            lcs.append(LineCollection(cell_lines, color="green", alpha=0.5))
+    # segments
+    segment_lc, hull_lc = [], []
+    for v in polys.values():
+        segment_lc.append(v["seg"])
+        hull_lc.append(v["cell_lines"])
+    ax[0].add_collection(LineCollection(segment_lc, color="r"))
+    ax[0].add_collection(LineCollection(hull_lc, color="green", alpha=0.5))
 
-    for lc in lcs:
-        ax[0].add_collection(lc)
-    ax[0].add_collection(LineCollection(pathlc, color="red"))
+    norm = Normalize(vmin=-100, vmax=100)
 
-    ax[0].set_xlim(-w * 0.1, w * 1.1)
-    ax[0].set_ylim(-h * 0.1, h * 1.1)
+    dists, angles, points = get_angles(polys)
 
-    plt.show()
-
-    """
-    # all edge points
-    epoints = np.empty((len(T.edges), 2, 2))
-    for i, (e1, e2) in enumerate(T.edges):
-        p1, p2 = rrts.points[e1], rrts.points[e2]
-        epoints[i, 0, :] = p1
-        epoints[i, 1, :] = p2
-
-    angles = np.empty((w, h))
-    points = np.empty((w, h, 2))
-    # for each point, find closest edge and calculate angle
-    for p in tqdm(np.ndindex((w, h)), total=w * h):
-        # find closest edge
-        dists = np.array(
-            [
-                dist2line(epoints[i, 0, :], epoints[i, 1, :])(p)
-                for i in range(len(T.edges))
-            ]
-        )
-        i = np.argmin(dists)
-        chi = np.arctan2(
-            epoints[i, 1, 1] - epoints[i, 0, 1], epoints[i, 1, 0] - epoints[i, 0, 0]
-        )
-        d = dists[i]
-
-        chi_inf = PI2
-        course = desired_course(chi_inf, d)
-        angles[p] = course + chi
-        points[p] = p
+    ax[0].imshow(dists.T, cmap="coolwarm", norm=norm)
 
     ax[0].quiver(
-        points[:, :, 1],
         points[:, :, 0],
-        np.sin(angles),
-        np.cos(angles),
+        points[:, :, 1],
+        np.cos(angles.T),
+        np.sin(angles.T),
         scale=1.0,
         width=0.1,
         units="xy",
     )
-    """
+
     plt.show()
-
-    # import matplotlib.pyplot as plt
-    # from matplotlib import cm
-    # from random import uniform
-
-    # w, h = 80, 80
-
-    # for ax, i in zip(plt.subplots(1, 2, figsize=(8, 4))[1], range(2)):
-    #     if i == 0:
-    #         p1 = np.array((40, 80))
-    #         p2 = np.array((40, 0))
-    #     elif i == 1:
-    #         p1 = np.array((40, 0))
-    #         p2 = np.array((40, 80))
-
-    #     # heading when on the line
-    #     chi = np.arctan2(p2[1] - p1[1], p2[0] - p1[0])
-    #     # function for dist to line
-    #     f = dist2line(p1, p2)
-
-    #     dists = np.empty((w, h))
-    #     angles = np.empty((w, h))
-    #     points = np.empty((w, h, 2))
-
-    #     for p in np.ndindex((w, h)):
-    #         y = f(p)
-    #         chi_inf = PI2
-    #         dists[p] = abs(y)
-    #         course = desired_course(chi_inf, y)
-    #         angles[p] = course + chi
-    #         points[p] = p
-
-    #     ax.imshow(dists, cmap=cm.get_cmap("Blues"), origin="lower")
-    #     ax.quiver(
-    #         points[:, :, 1],
-    #         points[:, :, 0],
-    #         np.sin(angles),
-    #         np.cos(angles),
-    #         scale=1.0,
-    #         width=0.1,
-    #         units="xy",
-    #     )
-    # plt.show()
