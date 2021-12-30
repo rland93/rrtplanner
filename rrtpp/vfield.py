@@ -1,14 +1,16 @@
 import numpy as np
 import numba as nb
-from math import atan
 from rrt import RRTstar
-from scipy import spatial
 import networkx as nx
-from itertools import product
 import pyvoronoi
 from collections import defaultdict
 from shapely import geometry
 from shapely.ops import unary_union
+from tqdm import tqdm
+from matplotlib.collections import LineCollection
+from matplotlib.colors import Normalize
+from rrtpp.rrt import get_rrt_LC
+
 
 PI2 = np.pi / 2.0
 
@@ -171,59 +173,21 @@ def integer_points(wh):
     return np.stack(np.meshgrid(np.arange(w), np.arange(h)), axis=-1)
 
 
-if __name__ == "__main__":
-    from matplotlib import cm
-    from matplotlib.collections import LineCollection
-    from rrt import RRTstar, get_rrt_LC
-    from world_gen import make_world, get_rand_start_end
-    import matplotlib.pyplot as plt
-    from tqdm import tqdm
-    from matplotlib.colors import Normalize
+def plot_angles(
+    ax,
+    dists,
+    angles,
+    points,
+    cell_lines,
+    vmin=-100,
+    vmax=100,
+):
+    norm = Normalize(vmin=vmin, vmax=vmax)
+    ### Distances
 
-    fig, ax = plt.subplots(1, 2, figsize=(8, 4))
-
-    # make world
-    w, h = 128, 64
-    world = make_world((w, h), (int(w / 32), int(h / 32)))
-    world = world | make_world((w, h), (int(4), int(4)))
-    xstart, xgoal = get_rand_start_end(world)
-
-    # make RRTS
-    rrts = RRTstar(world, 600)
-    T, gv = rrts.make(xstart, xgoal, 256)
-
-    # plot RRT and world
-    lc = get_rrt_LC(T)
-    ax[1].add_collection(lc)
-    for a in ax:
-        a.scatter(xstart[0], xstart[1], c="r", s=50, label="start", marker="o")
-        a.scatter(xgoal[0], xgoal[1], c="b", s=50, label="goal", marker="*")
-        a.imshow(world.T, cmap="Greys", origin="lower")
-        a.set_xlim(0, w)
-        a.set_ylim(0, h)
-
-    # get voronoi regions
-    # path = nx.shortest_path(T, 0, gv, weight="dist")
-
-    edges = [(T.nodes[e1]["pos"], T.nodes[e2]["pos"]) for (e1, e2) in T.edges()]
-
-    polys = get_voronoi_regions(edges)
-
-    # segments
-    segment_lc, hull_lc = [], []
-    for v in polys.values():
-        segment_lc.append(v["seg"])
-        hull_lc.append(v["cell_lines"])
-    ax[0].add_collection(LineCollection(segment_lc, color="r"))
-    ax[0].add_collection(LineCollection(hull_lc, color="green", alpha=0.5))
-
-    norm = Normalize(vmin=-100, vmax=100)
-
-    dists, angles, points = get_angles(polys)
-
-    ax[0].imshow(dists.T, cmap="coolwarm", norm=norm)
-
-    ax[0].quiver(
+    ax.imshow(dists.T, cmap="RdBu", norm=norm)
+    ### Arrows
+    ax.quiver(
         points[:, :, 0],
         points[:, :, 1],
         np.cos(angles.T),
@@ -232,5 +196,63 @@ if __name__ == "__main__":
         width=0.1,
         units="xy",
     )
+    ### Cells
+    ax.add_collection(LineCollection(cell_lines, color="olivedrab", alpha=0.5))
+
+
+def plot_path(ax, segment_lines, color="r"):
+    ax.add_collection(LineCollection(segment_lines, color=color))
+
+
+def plot_RRT(ax, xstart, xgoal, wh, rrt_T=None, world=None):
+    ax.scatter(xstart[0], xstart[1], c="r", s=50, label="start", marker="o")
+    ax.scatter(xgoal[0], xgoal[1], c="b", s=50, label="goal", marker="*")
+    if world is not None:
+        ax.imshow(world.T, cmap="Greys", origin="lower")
+    if rrt_T is not None:
+        lc = get_rrt_LC(T)
+        ax.add_collection(lc)
+    ax.set_xlim(0, wh[0])
+    ax.set_ylim(0, wh[1])
+
+
+if __name__ == "__main__":
+    from rrtpp.world_gen import make_world, get_rand_start_end
+    from rrtpp import RRTstar
+    from matplotlib import pyplot as plt
+
+    fig1 = plt.figure()
+    fig2 = plt.figure()
+
+    # make world
+    w, h = 64, 64
+    world = make_world((w, h), (int(w / 32), int(h / 32)))
+    world = world | make_world((w, h), (int(4), int(4)))
+    xstart, xgoal = get_rand_start_end(world)
+
+    # make RRTS
+    rrts = RRTstar(world, 600)
+    T, gv = rrts.make(xstart, xgoal, 256)
+
+    # get voronoi regions
+    path = nx.shortest_path(T, 0, gv, weight="dist")
+    edges = []
+    for i in range(len(path) - 1):
+        p1 = T.nodes[path[i]]["pos"]
+        p2 = T.nodes[path[i + 1]]["pos"]
+        edges.append((p1, p2))
+
+    polys = get_voronoi_regions(edges)
+    dists, angles, points = get_angles(polys)
+
+    ax = fig1.add_subplot(), fig2.add_subplot()
+
+    plot_RRT(ax[0], xstart, xgoal, world.shape, T, world)
+    plot_RRT(ax[1], xstart, xgoal, world.shape)
+
+    plot_path(ax[1], edges)
+    plot_path(ax[0], edges)
+
+    plot_angles(ax[1], dists, angles, points, [v["cell_lines"] for v in polys.values()])
 
     plt.show()

@@ -94,7 +94,7 @@ def near(points, x, r):
     return near
 
 
-class RRTvec(object):
+class RRT(object):
     """base class containing common RRT methods"""
 
     def __init__(self, world, n, every=10, pbar=True):
@@ -111,7 +111,7 @@ class RRTvec(object):
         self.sampled = set()
 
 
-class RRTstar(RRTvec):
+class RRTstar(RRT):
     def __init__(self, world, n, every=100, pbar=True):
         super().__init__(world, n, every=every, pbar=pbar)
 
@@ -224,9 +224,5 @@ if __name__ == "__main__":
     world = make_world((w, h), (4, 4))
     xstart, xgoal = get_rand_start_end(world)
 
-    rrts = RRTstar(world, 10000, every=10000, pbar=True)
+    rrts = RRTstar(world, 1000, every=25, pbar=True)
     T, gv = rrts.make(xstart, xgoal, r_rewire=64)
-    fig, ax = plt.subplots()
-    ax.add_collection(get_rrt_LC(T))
-    ax.imshow(world.T, cmap="Greys", origin="lower")
-    plt.show()
