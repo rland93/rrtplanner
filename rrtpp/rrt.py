@@ -3,7 +3,7 @@ import numba as nb
 from math import sqrt
 from tqdm import tqdm
 import networkx as nx
-from typing import Tuple
+from typing import Tuple, List
 
 ############# RRT BASE CLASS ##################################################
 
@@ -23,6 +23,15 @@ class RRT(object):
         self.world = world
         # set of sampled points
         self.sampled = set()
+
+    def route2gv(self, T: nx.DiGraph, gv) -> List[int]:
+        return nx.shortest_path(T, source=0, target=gv, weight="dist")
+
+    def path_points(self, T: nx.DiGraph, path: list) -> np.ndarray:
+        lines = []
+        for i in range(len(path) - 1):
+            lines.append([T.nodes[path[i]]["pt"], T.nodes[path[i + 1]]["pt"]])
+        return np.array(lines)
 
     @staticmethod
     def near(points: np.ndarray, x: np.ndarray) -> np.ndarray:
@@ -183,10 +192,12 @@ class RRTStandard(RRT):
             if e1 is not None:
                 if e2 == points.shape[0]:
                     p1, p2 = points[e1], xgoal
+                    cost = vcosts[e1] + self.r2norm(p2 - p1)
                 else:
                     p1, p2 = points[e1], points[e2]
+                    cost = vcosts[e2]
                 dist = self.r2norm(p2 - p1)
-                T.add_edge(e1, e2, dist=dist)
+                T.add_edge(e1, e2, dist=dist, cost=cost)
         return T, vgoal
 
 
@@ -299,10 +310,12 @@ class RRTStar(RRT):
             if e1 is not None:
                 if e2 == points.shape[0]:
                     p1, p2 = points[e1], xgoal
+                    cost = vcosts[e1] + self.r2norm(p2 - p1)
                 else:
                     p1, p2 = points[e1], points[e2]
+                    cost = vcosts[e2]
                 dist = self.r2norm(p2 - p1)
-                T.add_edge(e1, e2, dist=dist)
+                T.add_edge(e1, e2, dist=dist, cost=cost)
         return T, vgoal
 
 
@@ -374,7 +387,9 @@ class RRTStarInformed(RRT):
     def rad2deg(a):
         return a * 180 / np.pi
 
-    def get_ellipse_for_plt(self, xstart, xgoal, cmax):
+    def get_ellipse_for_plt(
+        self, xstart, xgoal, cmax
+    ) -> Tuple[np.ndarray, float, float, float]:
         xcent = (xgoal + xstart) / 2
         # get the rotation
         CL = self.get_ellipse_xform(xstart, xgoal, cmax)
@@ -392,7 +407,6 @@ class RRTStarInformed(RRT):
     def make(self, xstart: np.ndarray, xgoal: np.ndarray):
 
         vsoln = []
-        cmin = self.r2norm(xgoal - xstart)
 
         points = np.full((self.n, 2), dtype=int, fill_value=1e4)
         vcosts = np.full((self.n,), fill_value=np.inf)
@@ -495,10 +509,12 @@ class RRTStarInformed(RRT):
             if e1 is not None:
                 if e2 == points.shape[0]:
                     p1, p2 = points[e1], xgoal
+                    cost = vcosts[e1] + self.r2norm(p2 - p1)
                 else:
                     p1, p2 = points[e1], points[e2]
+                    cost = vcosts[e2]
                 dist = self.r2norm(p2 - p1)
-                T.add_edge(e1, e2, dist=dist)
+                T.add_edge(e1, e2, dist=dist, cost=cost)
         return T, vgoal
 
 
