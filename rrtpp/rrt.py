@@ -5,6 +5,9 @@ from tqdm import tqdm
 import networkx as nx
 
 
+############# RRT BASE CLASS ##################################################
+
+
 class RRT(object):
     """base class containing common RRT methods"""
 
@@ -100,7 +103,89 @@ class RRT(object):
         self.every = every
 
 
-class RRTstar(RRT):
+############# RRT STANDARD ####################################################
+
+
+class RRTStandard(RRT):
+    def __init__(self, world, n, every=100, pbar=True):
+        super().__init__(world, n, every=every, pbar=pbar)
+
+    def cost(self, vcosts, points, v, x):
+        return vcosts[v] + self.r2norm(points[v] - x)
+
+    def make(self, xstart: np.ndarray, xgoal: np.ndarray):
+        points = np.full((self.n, 2), dtype=int, fill_value=1e4)
+        vcosts = np.full((self.n,), fill_value=np.inf)
+        edges, parents = {}, {}
+        points[0] = xstart
+        vcosts[0] = 0
+        parents[0] = None
+        i, j = 0, 1
+        reached_goal = False
+        if self.pbar:
+            pbar = tqdm(total=self.n)
+
+        while i < self.n:
+            if self.pbar:
+                pbar.update(1)
+            xnew = self.sample_all_free()
+            vnearest = self.near(points, xnew)[0]
+            xnearest = points[vnearest]
+            nocoll = self.collisionfree(self.world, xnearest, xnew)
+            if nocoll and tuple(xnew) not in self.sampled:
+                self.sampled.add(tuple(xnew))
+                # check least cost path to xnew
+                vbest = vnearest
+                # store new point
+                vnew = j
+                points[vnew] = xnew
+                vcosts[vnew] = self.cost(vcosts, points, vbest, xnew)
+                # store new edge
+                edges[vnew] = vbest
+                parents[vbest] = vnew
+                j += 1
+            i += 1
+
+        # throw away empties
+        points = points[:j]
+        vcosts = vcosts[:j]
+        # complete, now try to find least cost to goal
+        dists = np.linalg.norm(points - xgoal, axis=1)
+        # add dist to each point's cost
+        for i in np.argsort(vcosts + dists):
+            if self.collisionfree(self.world, points[i], xgoal):
+                vgoal = points.shape[0]
+                reached_goal = True
+                edges[vgoal] = i
+                parents[i] = vgoal
+                break
+
+        # get nearest if not at goal
+        if not reached_goal:
+            vgoal = self.near(points, xgoal)[0]
+
+        # build graph
+        T = nx.DiGraph()
+        T.add_node(vgoal, pt=xgoal)
+        for i, p in enumerate(points):
+            T.add_node(i, pt=p)
+            T.nodes[i]["pt"]
+
+        for e2, e1 in edges.items():
+            if e1 is not None:
+                if e2 == points.shape[0]:
+                    p1, p2 = points[e1], xgoal
+                else:
+                    p1, p2 = points[e1], points[e2]
+                dist = self.r2norm(p2 - p1)
+                T.add_edge(e1, e2, dist=dist)
+        return T, vgoal
+
+
+########### RRT STAR ##########################################################
+
+
+class RRTStar(RRT):
     def __init__(self, world, n, every=100, pbar=True):
         super().__init__(world, n, every=every, pbar=pbar)
 
@@ -213,8 +298,8 @@ if __name__ == "__main__":
     world = make_world((w, h), (4, 4))
     xstart, xgoal = get_rand_start_end(world)
 
-    rrts = RRTstar(world, 1000, every=25, pbar=True)
-    T, gv = rrts.make(xstart, xgoal, r_rewire=64)
+    rrts = RRTStandard(world, 10000, every=25, pbar=True)
+    T, gv = rrts.make(xstart, xgoal)
 
     lc = []
     for (e1, e2) in T.edges:
