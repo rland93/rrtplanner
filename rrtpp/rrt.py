@@ -376,7 +376,7 @@ class RRTStarInformed(RRT):
         # rotation matrix
         C = self.rotation_to_world_frame(xstart, xgoal)
         # scale by major axis r1, minor axis r2.
-        r1 = (cmax + self.r_goal) / 2
+        r1 = cmax / 2
         d2 = np.dot((xstart - xgoal).T, (xstart - xgoal))
         r2 = np.sqrt(abs(cmax * cmax - d2)) / 2
         L = np.diag([r1, r2])

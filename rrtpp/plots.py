@@ -61,49 +61,47 @@ if __name__ == "__main__":
     from rrt import RRTStandard, RRTStar, RRTStarInformed
 
     axs = []
+    dpi, figsize = 120, (12, 6)
 
     # create world
-    w, h = 256, 256
-    n = 900
+    w, h = 256, 128
+    n = 350
     r_rewire, r_goal = 64, 32
-    world = make_world((w, h), (4, 4))
-    world = world | make_world((w, h), (2, 2))
+    world = make_world((w, h), (4, 2), thresh=0.25)
+    world = world | make_world((w, h), (4, 2), thresh=0.25)
     xstart, xgoal = get_rand_start_end(world)
 
-    # world plots
-    fig1, ax1 = plt.subplots(dpi=200)
-    axs.append(ax1)
-    # # RRT plots
-    fig2, ax2 = plt.subplots(dpi=200)
-    axs.append(ax2)
+    fig, axs = plt.subplots(2, 2, figsize=figsize, dpi=dpi, tight_layout=True)
+
+    axs[0, 0].set_title("Empty World")
 
     rrt2 = RRTStandard(world, n)
     T, gv = rrt2.make(xstart, xgoal)
-    plot_rrt_lines(ax2, T)
-
-    # # RRT* plots
-    fig3, ax3 = plt.subplots(dpi=200)
-    axs.append(ax3)
+    path = rrt2.path_points(T, rrt2.route2gv(T, gv))
+    plot_rrt_lines(axs[0, 1], T)
+    plot_path(axs[0, 1], path)
+    axs[0, 1].set_title("Standard RRT")
 
     rrt3 = RRTStar(world, n, r_rewire)
     T, gv = rrt3.make(xstart, xgoal)
-    plot_rrt_lines(ax3, T)
+    plot_rrt_lines(axs[1, 0], T)
     path = rrt3.path_points(T, rrt3.route2gv(T, gv))
-    plot_path(ax3, path)
-
-    # # RRT* Informed plots
-    fig4, ax4 = plt.subplots(dpi=200)
-    axs.append(ax4)
+    plot_path(axs[1, 0], path)
+    axs[1, 0].set_title("RRT*")
 
     rrt4 = RRTStarInformed(world, n, r_rewire, r_goal)
     T, gv = rrt4.make(xstart, xgoal)
-    plot_rrt_lines(ax4, T)
-    plot_ellipses(ax4, rrt4.ellipses)
-    plot_path(ax4, path)
+    path = rrt4.path_points(T, rrt4.route2gv(T, gv))
+    plot_rrt_lines(axs[1, 1], T)
+    plot_ellipses(axs[1, 1], rrt4.ellipses)
+    plot_path(axs[1, 1], path)
+    axs[1, 1].set_title("RRT* Informed")
 
-    for ax in axs:
+    for ax in axs.flatten():
         remove_axticks(ax)
         plot_world(ax, world)
         plot_start_goal(ax, xstart, xgoal)
+
+    fig.savefig("./figure.png", dpi=200)
 
     plt.show()

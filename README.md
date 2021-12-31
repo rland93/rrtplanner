@@ -1,6 +1,6 @@
 # RRT Path planning with Python!
 
-![Screenshot of RRTstar path](./Figure_1.png)
+![Screenshot of RRTstar path](./figure.png)
 
 This repository contains my planning algorithm research code. It has modules for creating random or dynamic occupancy grids on which to generate plans, utilities for plotting and animating plans, and implementations of the RRT, RRT*, and RRT-Informed planners. 
 
