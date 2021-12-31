@@ -53,7 +53,3 @@ Path Followers:
 
 + [Vector Field Path Following for Miniature Air Vehicles](https://ieeexplore.ieee.org/document/4252175)
 + [Unmanned Aerial Vehicle Path Following: A Survey and Analysis of Algorithms for Fixed-Wing Unmanned Aerial Vehicles](https://ieeexplore.ieee.org/document/6712082)
-
-Also requires the  You need to install that one manually:
-
-
