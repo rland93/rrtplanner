@@ -21,8 +21,6 @@ class RRT(object):
         # world free space
         self.free = np.argwhere(world == 0)
         self.world = world
-        # set of sampled points
-        self.sampled = set()
 
     def route2gv(self, T: nx.DiGraph, gv) -> List[int]:
         return nx.shortest_path(T, source=0, target=gv, weight="dist")
@@ -131,6 +129,7 @@ class RRTStandard(RRT):
         return vcosts[v] + self.r2norm(points[v] - x)
 
     def make(self, xstart: np.ndarray, xgoal: np.ndarray) -> Tuple[nx.DiGraph, int]:
+        sampled = set()
         points = np.full((self.n, 2), dtype=int, fill_value=1e4)
         vcosts = np.full((self.n,), fill_value=np.inf)
         edges, parents = {}, {}
@@ -149,8 +148,8 @@ class RRTStandard(RRT):
             vnearest = self.near(points, xnew)[0]
             xnearest = points[vnearest]
             nocoll = self.collisionfree(self.world, xnearest, xnew)
-            if nocoll and tuple(xnew) not in self.sampled:
-                self.sampled.add(tuple(xnew))
+            if nocoll and tuple(xnew) not in sampled:
+                sampled.add(tuple(xnew))
                 # check least cost path to xnew
                 vbest = vnearest
                 # store new point
@@ -221,6 +220,7 @@ class RRTStar(RRT):
         return vcosts[v] + self.r2norm(points[v] - x)
 
     def make(self, xstart: np.ndarray, xgoal: np.ndarray):
+        sampled = set()
         points = np.full((self.n, 2), dtype=int, fill_value=1e4)
         vcosts = np.full((self.n,), fill_value=np.inf)
         edges, parents = {}, {}
@@ -241,8 +241,8 @@ class RRTStar(RRT):
             xnearest = points[vnearest]
 
             nocoll = self.collisionfree(self.world, xnearest, xnew)
-            if nocoll and tuple(xnew) not in self.sampled:
-                self.sampled.add(tuple(xnew))
+            if nocoll and tuple(xnew) not in sampled:
+                sampled.add(tuple(xnew))
 
                 # check least cost path to xnew
                 vbest = vnearest
@@ -415,7 +415,7 @@ class RRTStarInformed(RRT):
     def make(self, xstart: np.ndarray, xgoal: np.ndarray):
 
         vsoln = []
-
+        sampled = set()
         points = np.full((self.n, 2), dtype=int, fill_value=1e4)
         vcosts = np.full((self.n,), fill_value=np.inf)
         edges, parents = {}, {}
@@ -444,8 +444,8 @@ class RRTStarInformed(RRT):
             xnearest = points[vnearest]
 
             nocoll = self.collisionfree(self.world, xnearest, xnew)
-            if nocoll and tuple(xnew) not in self.sampled:
-                self.sampled.add(tuple(xnew))
+            if nocoll and tuple(xnew) not in sampled:
+                sampled.add(tuple(xnew))
 
                 # check least cost path to xnew
                 vbest = vnearest
