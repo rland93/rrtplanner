@@ -11,7 +11,7 @@ from typing import Tuple, List
 class RRT(object):
     """base class containing common RRT methods"""
 
-    def __init__(self, world: np.ndarray, n: int, every=10, pbar=True):
+    def __init__(self, world: np.ndarray, n: int, every: int = 10, pbar: bool = True):
         # whether to display a progress bar
         self.pbar = pbar
         # every n tries, attempt to go to goal
@@ -323,7 +323,15 @@ class RRTStar(RRT):
 
 
 class RRTStarInformed(RRT):
-    def __init__(self, world, n, r_rewire, r_goal, every=100, pbar=True):
+    def __init__(
+        self,
+        world: np.ndarray,
+        n: int,
+        r_rewire: float,
+        r_goal: float,
+        every: int = 100,
+        pbar: bool = True,
+    ):
         super().__init__(world, n, every=every, pbar=pbar)
         self.r_rewire = r_rewire
         self.r_goal = r_goal
@@ -368,7 +376,7 @@ class RRTStarInformed(RRT):
         # rotation matrix
         C = self.rotation_to_world_frame(xstart, xgoal)
         # scale by major axis r1, minor axis r2.
-        r1 = cmax / 2
+        r1 = (cmax + self.r_goal) / 2
         d2 = np.dot((xstart - xgoal).T, (xstart - xgoal))
         r2 = np.sqrt(abs(cmax * cmax - d2)) / 2
         L = np.diag([r1, r2])

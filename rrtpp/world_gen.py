@@ -1,9 +1,10 @@
 from matplotlib.collections import PatchCollection
 import numpy as np
 from matplotlib.patches import Rectangle
-from perlin_numpy import generate_perlin_noise_3d, generate_perlin_noise_2d
+import perlin_numpy
 import matplotlib.pyplot as plt
 from matplotlib import animation
+from typing import Tuple
 
 
 class ObstacleGenerator(object):
@@ -88,32 +89,53 @@ class ObstacleGenerator(object):
         return start, end
 
 
-def make_world(shape, scale, dimensions=2, octaves=1, seed=None, thresh=0.3):
+def make_world(
+    shape: tuple,
+    scale: tuple,
+    dimensions: int = 2,
+    thresh=0.3,
+) -> np.ndarray:
+
     if dimensions == 3:
         t, w, h = shape
         ts, ws, hs = scale
-        noise1 = generate_perlin_noise_3d(
-            (t, w, h), (ts, ws, hs), tileable=(True, False, False)
+
+        noise1 = perlin_numpy.generate_perlin_noise_3d(
+            (t, w, h),
+            (ts, ws, hs),
+            tileable=(True, False, False),
         )
-        noise2 = generate_perlin_noise_3d(
-            (t, w, h), (ts, ws * 2, hs * 2), tileable=(True, False, False)
+        noise2 = perlin_numpy.generate_perlin_noise_3d(
+            (t, w, h),
+            (ts, ws * 2, hs * 2),
+            tileable=(True, False, False),
         )
+
         noise = (noise1 + noise2) / 2
         noise = (noise - np.min(noise)) / (np.max(noise) - np.min(noise))
         return np.where(noise < thresh, 1, 0)
+
     elif dimensions == 2:
         w, h = shape
         ws, hs = scale
-        noise1 = generate_perlin_noise_2d((w, h), (ws, hs), tileable=(False, False))
-        noise2 = generate_perlin_noise_2d(
-            (w, h), (ws * 2, hs * 2), tileable=(False, False)
+
+        noise1 = perlin_numpy.generate_perlin_noise_2d(
+            (w, h),
+            (ws, hs),
+            tileable=(False, False),
         )
+        noise2 = perlin_numpy.generate_perlin_noise_2d(
+            (w, h),
+            (ws * 2, hs * 2),
+            tileable=(False, False),
+        )
+
         noise = (noise1 + noise2) / 2
         noise = (noise - np.min(noise)) / (np.max(noise) - np.min(noise))
         return np.where(noise < thresh, 1, 0)
 
 
-def get_rand_start_end(world, bias=True):
+def get_rand_start_end(world: np.ndarray, bias=True) -> Tuple[np.ndarray, np.ndarray]:
     """if bias, prefer points far away from one another"""
     free_space = np.argwhere(world == 0)
     if bias == True:
