@@ -4,6 +4,13 @@ from math import sqrt
 from tqdm import tqdm
 import networkx as nx
 from typing import Tuple, List
+from collections import defaultdict
+
+
+@nb.njit(fastmath=True)
+def r2norm(x):
+    return sqrt(x[0] * x[0] + x[1] * x[1])
+
 
 ############# RRT BASE CLASS ##################################################
 
@@ -11,7 +18,14 @@ from typing import Tuple, List
 class RRT(object):
     """base class containing common RRT methods"""
 
-    def __init__(self, world: np.ndarray, n: int, every: int = 10, pbar: bool = True):
+    def __init__(
+        self,
+        world: np.ndarray,
+        n: int,
+        costfn: callable = None,
+        every: int = 10,
+        pbar: bool = True,
+    ):
         # whether to display a progress bar
         self.pbar = pbar
         # every n tries, attempt to go to goal
@@ -21,6 +35,23 @@ class RRT(object):
         # world free space
         self.free = np.argwhere(world == 0)
         self.world = world
+
+        # define simple r2norm cost function if
+        # no cost function is passed in
+
+        if costfn is None:
+
+            def costfn(
+                vcosts: np.ndarray,
+                points: np.ndarray,
+                v: int,
+                x: np.ndarray,
+            ) -> float:
+                return vcosts[v] + r2norm(points[v] - x)
+
+        self.cost = costfn
+        self.not_a_point = [np.inf, np.inf]
+        self.not_a_dist = np.inf
 
     def route2gv(self, T: nx.DiGraph, gv) -> List[int]:
         return nx.shortest_path(T, source=0, target=gv, weight="dist")
@@ -50,11 +81,6 @@ class RRT(object):
         # get indices of points within r2
         near_idx = np.argwhere(d2 < r * r)
         return np.atleast_1d(np.squeeze(near_idx))
-
-    @staticmethod
-    @nb.njit(fastmath=True)
-    def r2norm(x):
-        return sqrt(x[0] * x[0] + x[1] * x[1])
 
     @staticmethod
     @nb.njit()
@@ -118,21 +144,17 @@ class RRTStandard(RRT):
         self,
         world: np.ndarray,
         n: int,
+        costfn: callable = None,
         every=100,
         pbar=True,
     ):
-        super().__init__(world, n, every=every, pbar=pbar)
-
-    def cost(
-        self, vcosts: np.ndarray, points: np.ndarray, v: int, x: np.ndarray
-    ) -> float:
-        return vcosts[v] + self.r2norm(points[v] - x)
+        super().__init__(world, n, costfn=costfn, every=every, pbar=pbar)
 
     def make(self, xstart: np.ndarray, xgoal: np.ndarray) -> Tuple[nx.DiGraph, int]:
         sampled = set()
-        points = np.full((self.n, 2), dtype=int, fill_value=1e4)
-        vcosts = np.full((self.n,), fill_value=np.inf)
-        edges, parents = {}, {}
+        points = np.full((self.n, 2), dtype=int, fill_value=self.not_a_point)
+        vcosts = np.full((self.n,), fill_value=self.not_a_dist)
+        parents, children = {}, defaultdict(list)
         points[0] = xstart
         vcosts[0] = 0
         parents[0] = None
@@ -157,8 +179,8 @@ class RRTStandard(RRT):
                 points[vnew] = xnew
                 vcosts[vnew] = self.cost(vcosts, points, vbest, xnew)
                 # store new edge
-                edges[vnew] = vbest
-                parents[vbest] = vnew
+                children[vbest].append(vnew)
+                parents[vnew] = vbest
                 j += 1
             i += 1
 
@@ -172,8 +194,8 @@ class RRTStandard(RRT):
             if self.collisionfree(self.world, points[i], xgoal):
                 vgoal = points.shape[0]
                 reached_goal = True
-                edges[vgoal] = i
-                parents[i] = vgoal
+                parents[vgoal] = i
+                children[i].append(vgoal)
                 break
 
         # get nearest if not at goal
@@ -187,15 +209,15 @@ class RRTStandard(RRT):
             T.add_node(i, pt=p)
             T.nodes[i]["pt"]
 
-        for e2, e1 in edges.items():
+        for e2, e1 in parents.items():
             if e1 is not None:
                 if e2 == points.shape[0]:
                     p1, p2 = points[e1], xgoal
-                    cost = vcosts[e1] + self.r2norm(p2 - p1)
+                    cost = vcosts[e1] + r2norm(p2 - p1)
                 else:
                     p1, p2 = points[e1], points[e2]
                     cost = vcosts[e2]
-                dist = self.r2norm(p2 - p1)
+                dist = r2norm(p2 - p1)
                 T.add_edge(e1, e2, dist=dist, cost=cost)
         return T, vgoal
 
@@ -205,25 +227,22 @@ class RRTStandard(RRT):
 
 class RRTStar(RRT):
     def __init__(
-        self, world: np.ndarray, n: int, r_rewire: float, every=100, pbar=True
-    ):
-        super().__init__(world, n, every=every, pbar=pbar)
-        self.r_rewire = r_rewire
-
-    def cost(
         self,
-        vcosts: np.ndarray,
-        points: np.ndarray,
-        v: int,
-        x: np.ndarray,
-    ) -> float:
-        return vcosts[v] + self.r2norm(points[v] - x)
+        world: np.ndarray,
+        n: int,
+        r_rewire: float,
+        costfn: callable = None,
+        every=100,
+        pbar=True,
+    ):
+        super().__init__(world, n, costfn=costfn, every=every, pbar=pbar)
+        self.r_rewire = r_rewire
 
     def make(self, xstart: np.ndarray, xgoal: np.ndarray):
         sampled = set()
-        points = np.full((self.n, 2), dtype=int, fill_value=1e4)
-        vcosts = np.full((self.n,), fill_value=np.inf)
-        edges, parents = {}, {}
+        points = np.full((self.n, 2), dtype=int, fill_value=self.not_a_point)
+        vcosts = np.full((self.n,), fill_value=self.not_a_dist)
+        children, parents = defaultdict(list), {}
         points[0] = xstart
         vcosts[0] = 0
         parents[0] = None
@@ -262,8 +281,8 @@ class RRTStar(RRT):
                 points[vnew] = xnew
                 vcosts[vnew] = cbest
                 # store new edge
-                edges[vnew] = vbest
-                parents[vbest] = vnew
+                parents[vnew] = vbest
+                children[vbest].append(vnew)
 
                 # tree rewire
                 for vn in vnear:
@@ -274,8 +293,8 @@ class RRTStar(RRT):
                         if self.collisionfree(self.world, xn, xnew):
                             parent = parents[vn]
                             if parent is not None:
-                                edges[parent] = None
-                                edges[vnew] = vn
+                                # reassign parent
+                                children[parent].remove(vn)
                                 parents[vn] = vnew
                                 vcosts[vn] = cmaybe
                 j += 1
@@ -291,8 +310,8 @@ class RRTStar(RRT):
             if self.collisionfree(self.world, points[i], xgoal):
                 vgoal = points.shape[0]
                 reached_goal = True
-                edges[vgoal] = i
-                parents[i] = vgoal
+                parents[vgoal] = i
+                children[i].append(vgoal)
                 break
 
         # get nearest if not at goal
@@ -306,15 +325,15 @@ class RRTStar(RRT):
             T.add_node(i, pt=p)
             T.nodes[i]["pt"]
 
-        for e2, e1 in edges.items():
+        for e2, e1 in parents.items():
             if e1 is not None:
                 if e2 == points.shape[0]:
                     p1, p2 = points[e1], xgoal
-                    cost = vcosts[e1] + self.r2norm(p2 - p1)
+                    cost = vcosts[e1] + r2norm(p2 - p1)
                 else:
                     p1, p2 = points[e1], points[e2]
                     cost = vcosts[e2]
-                dist = self.r2norm(p2 - p1)
+                dist = r2norm(p2 - p1)
                 T.add_edge(e1, e2, dist=dist, cost=cost)
         return T, vgoal
 
@@ -329,10 +348,11 @@ class RRTStarInformed(RRT):
         n: int,
         r_rewire: float,
         r_goal: float,
+        costfn: callable = None,
         every: int = 100,
         pbar: bool = True,
     ):
-        super().__init__(world, n, every=every, pbar=pbar)
+        super().__init__(world, n, costfn=costfn, every=every, pbar=pbar)
         self.r_rewire = r_rewire
         self.r_goal = r_goal
         # store the ellipses for plotting later
@@ -409,16 +429,13 @@ class RRTStarInformed(RRT):
         ang = self.rad2deg(np.arctan2((a)[1], (a)[0]))
         return xcent, majax, minax, ang
 
-    def cost(self, vcosts, points, v, x):
-        return vcosts[v] + self.r2norm(points[v] - x)
-
     def make(self, xstart: np.ndarray, xgoal: np.ndarray):
 
         vsoln = []
         sampled = set()
-        points = np.full((self.n, 2), dtype=int, fill_value=1e4)
-        vcosts = np.full((self.n,), fill_value=np.inf)
-        edges, parents = {}, {}
+        points = np.full((self.n, 2), dtype=int, fill_value=self.not_a_point)
+        vcosts = np.full((self.n,), fill_value=self.not_a_dist)
+        parents, children = {}, defaultdict(list)
         points[0] = xstart
         vcosts[0] = 0
         parents[0] = None
@@ -436,7 +453,7 @@ class RRTStarInformed(RRT):
                 xnew = self.sample_all_free()
             else:
                 vbest, cbest = self.least_cost(vcosts, list(vsoln))
-                cbest += self.r2norm(xgoal - points[vbest])
+                cbest += r2norm(xgoal - points[vbest])
                 xnew = self.sample_ellipse(xstart, xgoal, cbest)
                 self.ellipses[j] = self.get_ellipse_for_plt(xstart, xgoal, cbest)
 
@@ -465,8 +482,8 @@ class RRTStarInformed(RRT):
                 points[vnew] = xnew
                 vcosts[vnew] = cbest
                 # store new edge
-                edges[vnew] = vbest
-                parents[vbest] = vnew
+                parents[vnew] = vbest
+                children[vbest].append(vnew)
 
                 # tree rewire
                 for vn in vnear:
@@ -477,12 +494,11 @@ class RRTStarInformed(RRT):
                         if self.collisionfree(self.world, xn, xnew):
                             parent = parents[vn]
                             if parent is not None:
-                                edges[parent] = None
-                                edges[vnew] = vn
+                                children[parent].remove(vn)
                                 parents[vn] = vnew
                                 vcosts[vn] = cmaybe
                 # check goal
-                if self.r2norm(xnew - xgoal) < self.r_goal:
+                if r2norm(xnew - xgoal) < self.r_goal:
                     vsoln.append(vnew)
 
                 j += 1
@@ -498,8 +514,8 @@ class RRTStarInformed(RRT):
             if self.collisionfree(self.world, points[i], xgoal):
                 vgoal = points.shape[0]
                 reached_goal = True
-                edges[vgoal] = i
-                parents[i] = vgoal
+                parents[vgoal] = i
+                children[i].append(vgoal)
                 break
 
         # get nearest if not at goal
@@ -513,15 +529,15 @@ class RRTStarInformed(RRT):
             T.add_node(i, pt=p)
             T.nodes[i]["pt"]
 
-        for e2, e1 in edges.items():
+        for e2, e1 in parents.items():
             if e1 is not None:
                 if e2 == points.shape[0]:
                     p1, p2 = points[e1], xgoal
-                    cost = vcosts[e1] + self.r2norm(p2 - p1)
+                    cost = vcosts[e1] + r2norm(p2 - p1)
                 else:
                     p1, p2 = points[e1], points[e2]
                     cost = vcosts[e2]
-                dist = self.r2norm(p2 - p1)
+                dist = r2norm(p2 - p1)
                 T.add_edge(e1, e2, dist=dist, cost=cost)
         return T, vgoal
 
