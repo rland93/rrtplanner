@@ -1,13 +1,9 @@
-from world_gen import make_terrain
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import cm
 from matplotlib.colors import Normalize
-from math import ceil
 import cvxpy as cp
 import numpy as np
 import numba as nb
-
 
 def plot_surface(
     ax,
