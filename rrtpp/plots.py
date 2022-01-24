@@ -50,8 +50,8 @@ def plot_ellipses(ax, ellipses, cmap="RdPu"):
         ax.add_artist(Ellipse(*e, fill=None, color=c, zorder=10))
 
 
-def plot_path(ax, pathlines: np.ndarray):
-    lc = LineCollection(pathlines, color="r", linewidth=2)
+def plot_path(ax, pathlines: np.ndarray, zorder=10):
+    lc = LineCollection(pathlines, color="r", linewidth=2, zorder=zorder)
     ax.add_collection(lc)
 
 
@@ -65,7 +65,7 @@ if __name__ == "__main__":
 
     # create world
     w, h = 256, 128
-    n = 350
+    n = 3500
     r_rewire, r_goal = 64, 32
     world = make_world((w, h), (4, 2), thresh=0.25)
     world = world | make_world((w, h), (4, 2), thresh=0.25)

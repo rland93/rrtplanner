@@ -1,6 +1,5 @@
 import numpy as np
 import numba as nb
-from rrt import RRTstar
 import networkx as nx
 import pyvoronoi
 from collections import defaultdict
@@ -9,7 +8,6 @@ from shapely.ops import unary_union
 from tqdm import tqdm
 from matplotlib.collections import LineCollection
 from matplotlib.colors import Normalize
-from rrtpp.rrt import get_rrt_LC
 
 
 PI2 = np.pi / 2.0
@@ -48,7 +46,8 @@ def dist2line(p1, p2) -> callable:
     return dist
 
 
-def get_voronoi_regions(path) -> dict:
+def get_voronoi_regions(path, shape) -> dict:
+    w, h = shape
     pv = pyvoronoi.Pyvoronoi(len(path) * 5)
     segmask, segs = [], []
 
@@ -185,7 +184,7 @@ def plot_angles(
     norm = Normalize(vmin=vmin, vmax=vmax)
     ### Distances
 
-    ax.imshow(dists.T, cmap="RdBu", norm=norm)
+    ax.imshow(dists.T, cmap="RdBu", norm=norm, origin="lower")
     ### Arrows
     ax.quiver(
         points[:, :, 0],
@@ -200,29 +199,13 @@ def plot_angles(
     ax.add_collection(LineCollection(cell_lines, color="olivedrab", alpha=0.5))
 
 
-def plot_path(ax, segment_lines, color="r"):
-    ax.add_collection(LineCollection(segment_lines, color=color))
-
-
-def plot_RRT(ax, xstart, xgoal, wh, rrt_T=None, world=None):
-    ax.scatter(xstart[0], xstart[1], c="r", s=50, label="start", marker="o")
-    ax.scatter(xgoal[0], xgoal[1], c="b", s=50, label="goal", marker="*")
-    if world is not None:
-        ax.imshow(world.T, cmap="Greys", origin="lower")
-    if rrt_T is not None:
-        lc = get_rrt_LC(T)
-        ax.add_collection(lc)
-    ax.set_xlim(0, wh[0])
-    ax.set_ylim(0, wh[1])
-
-
 if __name__ == "__main__":
-    from rrtpp.world_gen import make_world, get_rand_start_end
-    from rrtpp import RRTstar
+    from world_gen import make_world, get_rand_start_end
+    from rrt import RRTStar
     from matplotlib import pyplot as plt
+    from plots import plot_world, plot_path, plot_rrt_lines
 
     fig1 = plt.figure()
-    fig2 = plt.figure()
 
     # make world
     w, h = 64, 64
@@ -230,29 +213,47 @@ if __name__ == "__main__":
     world = world | make_world((w, h), (int(4), int(4)))
     xstart, xgoal = get_rand_start_end(world)
 
+    # generate a random path
+    npoints = 3
+    path = []
+    for i in range(npoints):
+        x = np.random.randint(0, w)
+        y = np.random.randint(0, h)
+        path.append((x, y))
+    for i in range(npoints - 1):
+        path[i] = (path[i], path[i + 1])
+    path = np.array(path[:-1])
+
+    polys = get_voronoi_regions(path, world.shape)
+    dists, angles, points = get_angles(polys, k=1 / 5)
+    cell_lines = [polys[i]["cell_lines"] for i in polys]
+    ax1 = fig1.add_subplot()
+
+    plot_angles(ax1, dists, angles, points, cell_lines)
+    plot_path(ax1, path)
+    plt.show()
+
+    """
     # make RRTS
-    rrts = RRTstar(world, 600)
-    T, gv = rrts.make(xstart, xgoal, 256)
+    rrts = RRTStar(world, 400, r_rewire=32)
+    T, gv = rrts.make(xstart, xgoal)
 
-    # get voronoi regions
-    path = nx.shortest_path(T, 0, gv, weight="dist")
-    edges = []
-    for i in range(len(path) - 1):
-        p1 = T.nodes[path[i]]["pos"]
-        p2 = T.nodes[path[i + 1]]["pos"]
-        edges.append((p1, p2))
+    path = rrts.path_points(T, rrts.route2gv(T, gv))
+    print(path)
+    polys = get_voronoi_regions(path)
 
-    polys = get_voronoi_regions(edges)
-    dists, angles, points = get_angles(polys)
+    
 
-    ax = fig1.add_subplot(), fig2.add_subplot()
+    
 
-    plot_RRT(ax[0], xstart, xgoal, world.shape, T, world)
-    plot_RRT(ax[1], xstart, xgoal, world.shape)
+    
+    plot_rrt_lines(ax1, T, color_costs=True, cmap="RdBu")
 
-    plot_path(ax[1], edges)
-    plot_path(ax[0], edges)
+    
 
-    plot_angles(ax[1], dists, angles, points, [v["cell_lines"] for v in polys.values()])
+    plot_rrt_lines(ax2, T, color_costs=True, cmap="GnBu")
+    
+    
 
     plt.show()
+    """

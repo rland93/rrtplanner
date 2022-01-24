@@ -135,15 +135,11 @@ def make_world(
         return np.where(noise < thresh, 1, 0)
 
 
-def get_rand_start_end(world: np.ndarray, bias=True) -> Tuple[np.ndarray, np.ndarray]:
+def get_rand_start_end(world: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     """if bias, prefer points far away from one another"""
     free_space = np.argwhere(world == 0)
-    if bias == True:
-        start_i = int(np.random.beta(a=0.5, b=5) * free_space.shape[0])
-        end_i = int(np.random.beta(a=5, b=0.5) * free_space.shape[0])
-    else:
-        start_i = np.random.choice(free_space.shape[0])
-        end_i = np.random.choice(free_space.shape[0])
+    start_i = np.random.choice(free_space.shape[0])
+    end_i = np.random.choice(free_space.shape[0])
     start = free_space[start_i, :]
     end = free_space[end_i, :]
     return start, end
@@ -156,3 +152,13 @@ def animate_perlin_world(world):
         for layer in world
     ]
     return animation.ArtistAnimation(fig, images, interval=50, blit=True)
+
+
+def make_terrain(shape, scale, cutoff=False, thresh=0.35, height=30):
+    X, Y = np.meshgrid(np.arange(shape[0]), np.arange(shape[1]))
+    terrain = perlin_numpy.generate_perlin_noise_2d(shape, scale)
+    if cutoff:
+        terrain = terrain - np.min(terrain) / (np.max(terrain) - np.min(terrain))
+        terrain = np.where(terrain < thresh, 1, 0)
+    terrain *= height
+    return X.T, Y.T, terrain
