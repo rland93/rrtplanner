@@ -116,3 +116,19 @@ def test_within(getrrtobj):
     p1_ = np.array([0.5, 0.5])
 
     assert rrtobj.within(points_, p1_, 1.0).shape[0] == 4
+
+
+@pytest.fixture(params=["RRT", "RRTStar", "RRTStarInformed"])
+def getRRT(request, make_world):
+    if request.param == "RRT":
+        return rrt.RRTStandard(make_world, 100)
+    elif request.param == "RRTStar":
+        return rrt.RRTStar(make_world, 100, r_rewire=50)
+    elif request.param == "RRTStarInformed":
+        return rrt.RRTStarInformed(make_world, 100, r_rewire=50, r_goal=5)
+
+
+def test_rrt(getRRT):
+    rrtobj = getRRT
+    xstart, xgoal = world_gen.get_rand_start_end(rrtobj.world)
+    T, gv = rrtobj.make(xstart, xgoal)

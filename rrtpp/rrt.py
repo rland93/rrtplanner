@@ -144,22 +144,23 @@ class RRT(object):
         found_goal = False
         for idx in np.argsort(costs):
             if self.collisionfree(self.world, points[idx], xgoal):
-                # we add one more point to points
                 vgoal = j
-                points = points[: j + 1]
-                points[j] = xgoal
-                vcosts[j] = costs[idx]
-                children[idx].append(j)
-                parents[j] = idx
+                points = np.concatenate((points, xgoal[np.newaxis, :]), axis=0)
+                vcosts = np.concatenate((vcosts, [costs[idx]]), axis=0)
+                points[vgoal] = xgoal
+                vcosts[vgoal] = costs[idx]
+                children[idx].append(vgoal)
+                parents[vgoal] = idx
                 found_goal = True
                 break
         if not found_goal:
-            points = points[:j]
+            # shrink points array
             dists = np.linalg.norm(points - xgoal)
             vgoal = np.argmin(dists)
-        return vgoal, children, parents, vcosts
+        return vgoal, children, parents, points, vcosts
 
     def build_graph(self, vgoal, points, parents, vcosts):
+        assert points.max() < self.not_a_point[0] - 1
         # build graph
         T = nx.DiGraph()
         T.add_node(vgoal, pt=points[vgoal])
@@ -207,7 +208,7 @@ class RRTStandard(RRT):
             vnearest = self.near(points, xnew)[0]
             xnearest = points[vnearest]
             nocoll = self.collisionfree(self.world, xnearest, xnew)
-            if nocoll and tuple(xnew) not in sampled:
+            if nocoll and tuple(xnew) not in sampled and j != self.n:
                 sampled.add(tuple(xnew))
                 # check least cost path to xnew
                 vbest = vnearest
@@ -221,32 +222,14 @@ class RRTStandard(RRT):
                 j += 1
             i += 1
 
-        # throw away empties
-        points = points[:j]
-        vcosts = vcosts[:j]
-
-        # go to goal
-        vgoal, i = self.lc2goal(xgoal, vcosts, points)
-        children[i].append(vgoal)
-        parents[vgoal] = i
+        # go to goal if possible
+        vgoal, children, parents, points, vcosts = self.go2goal(
+            vcosts, points, xgoal, j, children, parents
+        )
 
         # build graph
-        T = nx.DiGraph()
-        T.add_node(vgoal, pt=xgoal)
-        for i, p in enumerate(points):
-            T.add_node(i, pt=p)
-            T.nodes[i]["pt"]
+        T = self.build_graph(vgoal, points, parents, vcosts)
 
-        for e2, e1 in parents.items():
-            if e1 is not None:
-                if e2 == points.shape[0]:
-                    p1, p2 = points[e1], xgoal
-                    cost = vcosts[e1] + r2norm(p2 - p1)
-                else:
-                    p1, p2 = points[e1], points[e2]
-                    cost = vcosts[e2]
-                dist = r2norm(p2 - p1)
-                T.add_edge(e1, e2, dist=dist, cost=cost)
         return T, vgoal
 
 
@@ -287,7 +270,7 @@ class RRTStar(RRT):
             xnearest = points[vnearest]
 
             nocoll = self.collisionfree(self.world, xnearest, xnew)
-            if nocoll and tuple(xnew) not in sampled:
+            if nocoll and tuple(xnew) not in sampled and j != self.n:
                 sampled.add(tuple(xnew))
 
                 # check least cost path to xnew
@@ -330,7 +313,7 @@ class RRTStar(RRT):
                 j += 1
             i += 1
         # go to goal if possible
-        vgoal, children, parents, vcosts = self.go2goal(
+        vgoal, children, parents, points, vcosts = self.go2goal(
             vcosts, points, xgoal, j, children, parents
         )
         # build graph
@@ -389,7 +372,11 @@ class RRTStarInformed(RRT):
         focal points."""
         a1 = np.atleast_2d((xgoal - xstart) / np.linalg.norm(xgoal - xstart))
         M = np.outer(a1, np.atleast_2d([1, 0]))
-        U, _, V = np.linalg.svd(M)
+        try:
+            U, _, V = np.linalg.svd(M)
+        except np.linalg.LinAlgError:
+            # handle SVD not converging
+            U, _, V = np.linalg.svd(M, full_matrices=False)
         return U @ np.diag([np.linalg.det(U), np.linalg.det(V)]) @ V.T
 
     def get_ellipse_xform(self, xstart, xgoal, cmax):
@@ -461,7 +448,7 @@ class RRTStarInformed(RRT):
             xnearest = points[vnearest]
 
             nocoll = self.collisionfree(self.world, xnearest, xnew)
-            if nocoll and tuple(xnew) not in sampled:
+            if nocoll and tuple(xnew) not in sampled and j != self.n:
                 sampled.add(tuple(xnew))
 
                 # check least cost path to xnew
@@ -504,32 +491,14 @@ class RRTStarInformed(RRT):
                 j += 1
             i += 1
 
-        # throw away empties
-        points = points[:j]
-        vcosts = vcosts[:j]
-
-        # go to goal
-        vgoal, i = self.lc2goal(xgoal, vcosts, points)
-        children[i].append(vgoal)
-        parents[vgoal] = i
+        # go to goal if possible
+        vgoal, children, parents, points, vcosts = self.go2goal(
+            vcosts, points, xgoal, j, children, parents
+        )
 
         # build graph
-        T = nx.DiGraph()
-        T.add_node(vgoal, pt=xgoal)
-        for i, p in enumerate(points):
-            T.add_node(i, pt=p)
-            T.nodes[i]["pt"]
+        T = self.build_graph(vgoal, points, parents, vcosts)
 
-        for e2, e1 in parents.items():
-            if e1 is not None:
-                if e2 == points.shape[0]:
-                    p1, p2 = points[e1], xgoal
-                    cost = vcosts[e1] + r2norm(p2 - p1)
-                else:
-                    p1, p2 = points[e1], points[e2]
-                    cost = vcosts[e2]
-                dist = r2norm(p2 - p1)
-                T.add_edge(e1, e2, dist=dist, cost=cost)
         return T, vgoal
 
 
@@ -553,4 +522,4 @@ if __name__ == "__main__":
         lc.append([p1, p2])
 
     ax.add_collection(LineCollection(lc, colors="b"))
-    plt.show()
+    # plt.show()
