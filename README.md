@@ -26,16 +26,13 @@ All algorithms are written in Python. I've tried to accelerate some things with 
 
 This is research code, so it's not *at all* a robust package to use for a real planner. Let me know how you are using it!
 
-## Dependency Quirks
-
-It relies on [`perlin-numpy`](https://github.com/pvigier/perlin-numpy) package to make the random worlds, which is not listed on PyPi. To install manually:
-```bash
-pip install git+https://github.com/pvigier/perlin-numpy
-```
+## Dependency Notes
 
 It relies on Numba to accelerate some collision logic:
 
 https://numba.readthedocs.io/en/stable/user/installing.html
+
+`pyfastnoisesimd` relies on SIMD instructions available only on modern processors to speed up perlin noise generation for random occupancyGrids. I'm not sure how it degrades if those instructions are not available. See https://pyfastnoisesimd.readthedocs.io/en/latest/overview.html.
 
 ## Information:
 
