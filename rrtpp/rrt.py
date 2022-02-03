@@ -12,6 +12,23 @@ def r2norm(x):
     return sqrt(x[0] * x[0] + x[1] * x[1])
 
 
+def random_point_og(og: np.ndarray) -> np.ndarray:
+    """Get a random point in free space from the occupancyGrid.
+
+    Parameters
+    ----------
+    og : np.ndarray
+        occupancyGrid. 1 is obstacle, 0 is free space.
+
+    Returns
+    -------
+    np.ndarray
+        randomly-sampled point
+    """
+    free = np.argwhere(og == 0)
+    return free[np.random.randint(0, free.shape[0])]
+
+
 ############# RRT BASE CLASS ##################################################
 
 
@@ -20,7 +37,7 @@ class RRT(object):
 
     def __init__(
         self,
-        world: np.ndarray,
+        og: np.ndarray,
         n: int,
         costfn: callable = None,
         every: int = 10,
@@ -32,9 +49,9 @@ class RRT(object):
         self.every = every
         # array containing vertex points
         self.n = n
-        # world free space
-        self.free = np.argwhere(world == 0)
-        self.world = world
+        # occupancyGrid free space
+        self.free = np.argwhere(og == 0)
+        self.og = og
 
         # define simple r2norm cost function if
         # no cost function is passed in
@@ -84,8 +101,8 @@ class RRT(object):
 
     @staticmethod
     @nb.njit()
-    def collisionfree(world, a, b) -> bool:
-        """calculate linear collision on world between points a, b"""
+    def collisionfree(og, a, b) -> bool:
+        """calculate linear collision on occupancyGrid between points a, b"""
         x0 = a[0]
         y0 = a[1]
         x1 = b[0]
@@ -102,7 +119,7 @@ class RRT(object):
             sy = -1
         err = dx + dy
         while True:
-            if world[x0, y0] != 0:
+            if og[x0, y0] != 0:
                 return False
             elif x0 == x1 and y0 == y1:
                 return True
@@ -116,16 +133,16 @@ class RRT(object):
                     y0 += sy
 
     def sample_all_free(self):
-        """sample uniformly from free space in the world."""
+        """sample uniformly from free space in the occupancyGrid."""
         return self.free[np.random.choice(self.free.shape[0])]
 
     def make(self, xstart: np.ndarray, xgoal: np.ndarray):
         raise NotImplementedError
 
-    def set_world(self, world: np.ndarray):
-        """update world with new world"""
-        self.world = world
-        self.free = np.argwhere(self.world == 0)
+    def set_og(self, og_new: np.ndarray):
+        """update occupancyGrid"""
+        self.og = og_new
+        self.free = np.argwhere(og_new == 0)
 
     def set_n(self, n: int):
         """update n"""
@@ -143,7 +160,7 @@ class RRT(object):
 
         found_goal = False
         for idx in np.argsort(costs):
-            if self.collisionfree(self.world, points[idx], xgoal):
+            if self.collisionfree(self.og, points[idx], xgoal):
                 vgoal = j
                 points = np.concatenate((points, xgoal[np.newaxis, :]), axis=0)
                 vcosts = np.concatenate((vcosts, [costs[idx]]), axis=0)
@@ -181,13 +198,13 @@ class RRT(object):
 class RRTStandard(RRT):
     def __init__(
         self,
-        world: np.ndarray,
+        og: np.ndarray,
         n: int,
         costfn: callable = None,
         every=100,
         pbar=True,
     ):
-        super().__init__(world, n, costfn=costfn, every=every, pbar=pbar)
+        super().__init__(og, n, costfn=costfn, every=every, pbar=pbar)
 
     def make(self, xstart: np.ndarray, xgoal: np.ndarray) -> Tuple[nx.DiGraph, int]:
         sampled = set()
@@ -207,7 +224,7 @@ class RRTStandard(RRT):
             xnew = self.sample_all_free()
             vnearest = self.near(points, xnew)[0]
             xnearest = points[vnearest]
-            nocoll = self.collisionfree(self.world, xnearest, xnew)
+            nocoll = self.collisionfree(self.og, xnearest, xnew)
             if nocoll and tuple(xnew) not in sampled and j != self.n:
                 sampled.add(tuple(xnew))
                 # check least cost path to xnew
@@ -239,14 +256,14 @@ class RRTStandard(RRT):
 class RRTStar(RRT):
     def __init__(
         self,
-        world: np.ndarray,
+        og: np.ndarray,
         n: int,
         r_rewire: float,
         costfn: callable = None,
         every=100,
         pbar=True,
     ):
-        super().__init__(world, n, costfn=costfn, every=every, pbar=pbar)
+        super().__init__(og, n, costfn=costfn, every=every, pbar=pbar)
         self.r_rewire = r_rewire
 
     def make(self, xstart: np.ndarray, xgoal: np.ndarray):
@@ -269,7 +286,7 @@ class RRTStar(RRT):
             vnearest = self.near(points, xnew)[0]
             xnearest = points[vnearest]
 
-            nocoll = self.collisionfree(self.world, xnearest, xnew)
+            nocoll = self.collisionfree(self.og, xnearest, xnew)
             if nocoll and tuple(xnew) not in sampled and j != self.n:
                 sampled.add(tuple(xnew))
 
@@ -282,7 +299,7 @@ class RRTStar(RRT):
                     xn = points[vn]
                     cn = self.cost(vcosts, points, vn, xnew)
                     if cn < cbest:
-                        if self.collisionfree(self.world, xn, xnew):
+                        if self.collisionfree(self.og, xn, xnew):
                             vbest = vn
                             cbest = cn
 
@@ -300,7 +317,7 @@ class RRTStar(RRT):
                     cn = vcosts[vn]
                     cmaybe = self.cost(vcosts, points, vn, xnew)
                     if cmaybe < cn:
-                        if self.collisionfree(self.world, xn, xnew):
+                        if self.collisionfree(self.og, xn, xnew):
                             parent = parents[vn]
                             if parent is not None:
                                 # reassign parent
@@ -328,7 +345,7 @@ class RRTStar(RRT):
 class RRTStarInformed(RRT):
     def __init__(
         self,
-        world: np.ndarray,
+        og: np.ndarray,
         n: int,
         r_rewire: float,
         r_goal: float,
@@ -336,7 +353,7 @@ class RRTStarInformed(RRT):
         every: int = 100,
         pbar: bool = True,
     ):
-        super().__init__(world, n, costfn=costfn, every=every, pbar=pbar)
+        super().__init__(og, n, costfn=costfn, every=every, pbar=pbar)
         self.r_rewire = r_rewire
         self.r_goal = r_goal
         # store the ellipses for plotting later
@@ -360,9 +377,9 @@ class RRTStarInformed(RRT):
         x, y = tuple(np.dot(CL, xball) + xcent)
 
         if clamp:
-            # clamp to finite world
-            x = int(max(0, min(self.world.shape[0] - 1, x)))
-            y = int(max(0, min(self.world.shape[1] - 1, y)))
+            # clamp to finite og
+            x = int(max(0, min(self.og.shape[0] - 1, x)))
+            y = int(max(0, min(self.og.shape[1] - 1, y)))
         return np.array((x, y))
 
     def rotation_to_world_frame(self, xstart, xgoal):
@@ -447,7 +464,7 @@ class RRTStarInformed(RRT):
             vnearest = self.near(points, xnew)[0]
             xnearest = points[vnearest]
 
-            nocoll = self.collisionfree(self.world, xnearest, xnew)
+            nocoll = self.collisionfree(self.og, xnearest, xnew)
             if nocoll and tuple(xnew) not in sampled and j != self.n:
                 sampled.add(tuple(xnew))
 
@@ -460,7 +477,7 @@ class RRTStarInformed(RRT):
                     xn = points[vn]
                     cn = self.cost(vcosts, points, vn, xnew)
                     if cn < cbest:
-                        if self.collisionfree(self.world, xn, xnew):
+                        if self.collisionfree(self.og, xn, xnew):
                             vbest = vn
                             cbest = cn
 
@@ -478,7 +495,7 @@ class RRTStarInformed(RRT):
                     cn = vcosts[vn]
                     cmaybe = self.cost(vcosts, points, vn, xnew)
                     if cmaybe < cn:
-                        if self.collisionfree(self.world, xn, xnew):
+                        if self.collisionfree(self.og, xn, xnew):
                             parent = parents[vn]
                             if parent is not None:
                                 children[parent].remove(vn)
@@ -503,23 +520,27 @@ class RRTStarInformed(RRT):
 
 
 if __name__ == "__main__":
+    from oggen import perlin_occupancygrid
     import matplotlib.pyplot as plt
-    from matplotlib.collections import LineCollection
-    from world_gen import make_world, get_rand_start_end
+    from plots import plot_og, plot_rrt_lines, plot_path, plot_start_goal
 
-    w, h = 512, 512
-    world = make_world((w, h), (4, 4))
-    xstart, xgoal = get_rand_start_end(world)
+    # create occupancy Grid
+    w, h = 800, 450
+    og = perlin_occupancygrid(w, h)
 
-    fig, ax = plt.subplots()
-    ax.imshow(~world.T, origin="lower", cmap="gray")
-    rrts = RRTStarInformed(world, 400, 256, 15, every=25, pbar=True)
-    T, gv = rrts.make(xstart, xgoal)
+    # create planner
+    rrtplanner = RRTStarInformed(og, n=2000, r_rewire=64, r_goal=12)
+    xstart = random_point_og(og)
+    xgoal = random_point_og(og)
 
-    lc = []
-    for (e1, e2) in T.edges:
-        p1, p2 = T.nodes[e1]["pt"], T.nodes[e2]["pt"]
-        lc.append([p1, p2])
+    T, gv = rrtplanner.make(xstart, xgoal)
+    pathlines = rrtplanner.route2gv(T, gv)
+    pathlines = rrtplanner.path_points(T, pathlines)
 
-    ax.add_collection(LineCollection(lc, colors="b"))
-    # plt.show()
+    fig = plt.figure(figsize=(16, 9))
+    ax = fig.add_subplot(111)
+    plot_og(ax, og)
+    plot_start_goal(ax, xstart, xgoal)
+    plot_rrt_lines(ax, T, color_costs=True)
+    plot_path(ax, pathlines)
+    plt.show()
