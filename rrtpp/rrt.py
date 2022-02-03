@@ -12,6 +12,23 @@ def r2norm(x):
     return sqrt(x[0] * x[0] + x[1] * x[1])
 
 
+def random_point_og(og: np.ndarray) -> np.ndarray:
+    """Get a random point in free space from the occupancyGrid.
+
+    Parameters
+    ----------
+    og : np.ndarray
+        occupancyGrid. 1 is obstacle, 0 is free space.
+
+    Returns
+    -------
+    np.ndarray
+        randomly-sampled point
+    """
+    free = np.argwhere(og == 0)
+    return free[np.random.randint(0, free.shape[0])]
+
+
 ############# RRT BASE CLASS ##################################################
 
 
@@ -512,9 +529,9 @@ if __name__ == "__main__":
     og = perlin_occupancygrid(w, h)
 
     # create planner
-    rrtplanner = RRTStarInformed(og, n=5000, r_rewire=64, r_goal=12)
-    xstart = rrtplanner.sample_all_free()
-    xgoal = rrtplanner.sample_all_free()
+    rrtplanner = RRTStarInformed(og, n=2000, r_rewire=64, r_goal=12)
+    xstart = random_point_og(og)
+    xgoal = random_point_og(og)
 
     T, gv = rrtplanner.make(xstart, xgoal)
     pathlines = rrtplanner.route2gv(T, gv)

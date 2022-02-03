@@ -3,6 +3,7 @@ from matplotlib.collections import LineCollection
 from matplotlib import cm
 from matplotlib.patches import Ellipse
 import numpy as np
+from matplotlib.axes import Axes
 
 
 def remove_axticks(ax):
@@ -10,9 +11,9 @@ def remove_axticks(ax):
     ax.set_yticks([])
 
 
-def plot_world(ax, world, cmap="Greys", vmin=0, vmax=1):
+def plot_og(ax: Axes, og: np.ndarray, cmap: str = "Greys", vmin=0, vmax=1):
     norm = Normalize(vmin=vmin, vmax=vmax)
-    ax.imshow(world.T, cmap=cmap, norm=norm, origin="lower", interpolation=None)
+    ax.imshow(og.T, cmap=cmap, norm=norm, origin="lower", interpolation=None)
 
 
 def plot_start_goal(ax, xstart, xgoal):
@@ -28,7 +29,7 @@ def plot_rrt_lines(ax, T, color_costs=True, cmap="viridis", color="tan", alpha=1
         costs.append(T.edges[e1, e2]["cost"])
     if color_costs:
         norm = Normalize(vmin=min(costs), vmax=max(costs))
-        colors = cm.get_cmap("viridis")(norm(costs))
+        colors = cm.get_cmap(cmap)(norm(costs))
         lc = LineCollection(lines, colors=colors, alpha=alpha)
     else:
         lc = LineCollection(lines, color=color, alpha=alpha)
@@ -57,39 +58,38 @@ def plot_path(ax, pathlines: np.ndarray, zorder=10):
 
 if __name__ == "__main__":
     from matplotlib import pyplot as plt
-    from world_gen import make_world, get_rand_start_end
-    from rrt import RRTStandard, RRTStar, RRTStarInformed
+    import rrt, oggen
 
     axs = []
     dpi, figsize = 120, (12, 6)
 
     # create world
-    w, h = 256, 128
-    n = 3500
+    w, h = 700, 500
+    n = 2500
     r_rewire, r_goal = 64, 32
-    world = make_world((w, h), (4, 2), thresh=0.25)
-    world = world | make_world((w, h), (4, 2), thresh=0.25)
-    xstart, xgoal = get_rand_start_end(world)
+    og = oggen.perlin_occupancygrid(w, h)
+    xstart = rrt.random_point_og(og)
+    xgoal = rrt.random_point_og(og)
 
     fig, axs = plt.subplots(2, 2, figsize=figsize, dpi=dpi, tight_layout=True)
 
-    axs[0, 0].set_title("Empty World")
+    axs[0, 0].set_title("Empty OccupancyGrid")
 
-    rrt2 = RRTStandard(world, n)
+    rrt2 = rrt.RRTStandard(og, n)
     T, gv = rrt2.make(xstart, xgoal)
     path = rrt2.path_points(T, rrt2.route2gv(T, gv))
     plot_rrt_lines(axs[0, 1], T)
     plot_path(axs[0, 1], path)
     axs[0, 1].set_title("Standard RRT")
 
-    rrt3 = RRTStar(world, n, r_rewire)
+    rrt3 = rrt.RRTStar(og, n, r_rewire)
     T, gv = rrt3.make(xstart, xgoal)
     plot_rrt_lines(axs[1, 0], T)
     path = rrt3.path_points(T, rrt3.route2gv(T, gv))
     plot_path(axs[1, 0], path)
     axs[1, 0].set_title("RRT*")
 
-    rrt4 = RRTStarInformed(world, n, r_rewire, r_goal)
+    rrt4 = rrt.RRTStarInformed(og, n, r_rewire, r_goal)
     T, gv = rrt4.make(xstart, xgoal)
     path = rrt4.path_points(T, rrt4.route2gv(T, gv))
     plot_rrt_lines(axs[1, 1], T)
@@ -99,9 +99,9 @@ if __name__ == "__main__":
 
     for ax in axs.flatten():
         remove_axticks(ax)
-        plot_world(ax, world)
+        plot_og(ax, og)
         plot_start_goal(ax, xstart, xgoal)
 
-    fig.savefig("./figure.png", dpi=200)
+    # fig.savefig("./figure.png", dpi=200)
 
     plt.show()
