@@ -1,4 +1,3 @@
-from world_gen import get_rand_start_end
 import numpy as np
 from matplotlib.collections import LineCollection
 import matplotlib.pyplot as plt
@@ -6,12 +5,13 @@ from matplotlib.animation import FuncAnimation
 from matplotlib.patches import Circle
 from tqdm import tqdm
 from scipy.ndimage import binary_dilation
+from rrt import random_point_og, RRT
 
 
 DEFAULT_APPEARANCE = {
     "tree_color": "slategrey",
     "tree_alpha": 0.2,
-    "world_cmap": "gist_gray_r",
+    "og_cmap": "gist_gray_r",
     "goal_marker": "*",
     "goal_color": "seagreen",
     "goal_circ_color": "seagreen",
@@ -24,11 +24,11 @@ DEFAULT_APPEARANCE = {
 class DynamicEnvironmentAnimation(object):
     def __init__(
         self,
-        movespeed,
-        r_within_goal,
-        rrtobj,
-        appearance=DEFAULT_APPEARANCE,
-        buffer_size=None,
+        movespeed: float,
+        r_within_goal: float,
+        rrtobj: RRT,
+        appearance: dict = DEFAULT_APPEARANCE,
+        buffer_size: int = None,
     ):
         self.movespeed = movespeed
         # radius within which we have "found" the goal
@@ -37,7 +37,7 @@ class DynamicEnvironmentAnimation(object):
         # which can take a start and goal and return a tree and a goal vector
         self.rrtobj = rrtobj
         # size of the "buffer" around obstacles. this is to avoid getting stuck
-        # in the world. if the environment changes quickly, or if velocity is
+        # in the obstacles. if the environment changes quickly, or if velocity is
         # large, this should be a larger value. But setting a very large value
         # will prevent optimal paths from being found.
         if buffer_size is not None:
@@ -54,10 +54,11 @@ class DynamicEnvironmentAnimation(object):
 
     def simulate_dynamic_goals(
         self,
-        worlds,
+        og_3d,
     ):
-        frames = worlds.shape[0]
-        xstart, xgoal = get_rand_start_end(worlds[0], bias=True)
+        frames = og_3d.shape[0]
+        xstart = random_point_og(og_3d[0])
+        xgoal = random_point_og(og_3d[0])
         current_position = xstart
 
         goals, positions = np.empty((frames, 2)), np.empty((frames, 2))
@@ -65,29 +66,29 @@ class DynamicEnvironmentAnimation(object):
 
         print("Simulating Dynamic Mission...")
         for fi in tqdm(range(frames), desc="frames"):
-            world = worlds[fi]
+            og = og_3d[fi]
             # if we are at the goal, get a new goal
             if np.linalg.norm(current_position - xgoal) < self.r_within_goal:
-                _, xgoal = get_rand_start_end(world, bias=False)
-            current_position = self.clamp(current_position, world.shape)
+                xgoal = random_point_og(og)
+            current_position = self.clamp(current_position, og.shape)
 
-            # ok so we kinda want to avoid getting stuck in the world so
+            # ok so we kinda want to avoid getting stuck in the obstacles so
             # we'll do a binary dilation to get a bit of a buffer around objects
             # before computing the plan, but we remove only the buffer near us.
             bsize = int(self.movespeed / 2)
-            world_dilated = binary_dilation(world, iterations=bsize)
-            buffer_reg = world_dilated - world
+            og_dilated = binary_dilation(og, iterations=bsize)
+            buffer_reg = og_dilated - og
             for i in range(bsize * 2):
                 for j in range(bsize * 2):
-                    hole = self.clamp(current_position + np.array([i, j]), world.shape)
+                    hole = self.clamp(current_position + np.array([i, j]), og.shape)
                     # set as free
                     buffer_reg[hole[0], hole[1]] = 0
-            world = world | buffer_reg
-            if world[current_position[0], current_position[1]] == 1:
+            og = og | buffer_reg
+            if og[current_position[0], current_position[1]] == 1:
                 in_obs = True
             else:
                 in_obs = False
-            self.rrtobj.set_world(world)
+            self.rrtobj.set_og(og)
             T, gv = self.rrtobj.make(current_position, xgoal)
             path = self.rrtobj.path_points(T, self.rrtobj.route2gv(T, gv))
 
@@ -112,10 +113,10 @@ class DynamicEnvironmentAnimation(object):
 
         return goals, positions, paths, trees
 
-    def animate(self, goals, positions, paths, trees, worlds):
+    def animate(self, goals, positions, paths, trees, og_3d):
         fig, ax = plt.subplots()
-        ax.set_xlim(0, worlds.shape[1])
-        ax.set_ylim(0, worlds.shape[2])
+        ax.set_xlim(0, og_3d.shape[1])
+        ax.set_ylim(0, og_3d.shape[2])
         ax.set_aspect("equal")
 
         pathlc = LineCollection(
@@ -128,8 +129,8 @@ class DynamicEnvironmentAnimation(object):
             alpha=self.appearance["tree_alpha"],
         )
         im = ax.imshow(
-            worlds[0].T,
-            cmap=self.appearance["world_cmap"],
+            og_3d[0].T,
+            cmap=self.appearance["og_cmap"],
             vmin=0,
             vmax=1,
             interpolation=None,
@@ -168,7 +169,7 @@ class DynamicEnvironmentAnimation(object):
         def update(i):
             pathlc.set_segments(paths[i])
             treelc.set_segments(trees[i])
-            im.set_data(worlds[i].T)
+            im.set_data(og_3d[i].T)
             goal_sc.set_offsets([goals[i, 0], goals[i, 1]])
             goalcircle.center = goals[i]
             start_sc.set_offsets([positions[i, 0], positions[i, 1]])
@@ -184,19 +185,21 @@ class DynamicEnvironmentAnimation(object):
         )
         return anim
 
-    def make_animation(self, worlds):
-        results = self.simulate_dynamic_goals(worlds)
-        return self.animate(*results, worlds)
+    def make_animation(self, og_3d):
+        results = self.simulate_dynamic_goals(og_3d)
+        return self.animate(*results, og_3d)
 
 
 if __name__ == "__main__":
-    from rrt import RRTStarInformed
-    from world_gen import make_world, get_rand_start_end
+    import rrt
+    from oggen import perlin_occupancygrid
 
-    w, h = 128, 128
-    worlds = make_world((128, w, h), (16, 4, 4), dimensions=3, thresh=0.37)
-    rrts = RRTStarInformed(worlds[0], n=800, r_rewire=128.0, r_goal=16.0, pbar=False)
+    w, h = 100, 100
+    frames = 200
+    og_3d = perlin_occupancygrid(w, h, 0.33, frames)
+    rrts = rrt.RRTStarInformed(og_3d[0], n=1000, r_rewire=25, r_goal=12.5, pbar=False)
+
     dyn_env_anim = DynamicEnvironmentAnimation(7.0, 5.0, rrts)
-    anim = dyn_env_anim.make_animation(worlds)
+    anim = dyn_env_anim.make_animation(og_3d)
     # anim.save("animation.mp4", fps=30, dpi=300)
     plt.show()
