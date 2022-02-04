@@ -9,6 +9,18 @@ from collections import defaultdict
 
 @nb.njit(fastmath=True)
 def r2norm(x):
+    """compute 2-norm of a vector
+
+    Parameters
+    ----------
+    x : np.ndarray
+        shape (2, ) array
+
+    Returns
+    -------
+    float
+        2-norm of x
+    """
     return sqrt(x[0] * x[0] + x[1] * x[1])
 
 
@@ -29,24 +41,19 @@ def random_point_og(og: np.ndarray) -> np.ndarray:
     return free[np.random.randint(0, free.shape[0])]
 
 
-############# RRT BASE CLASS ##################################################
+############# RRT BASE CLASS ##########################################################
 
 
 class RRT(object):
-    """base class containing common RRT methods"""
-
     def __init__(
         self,
         og: np.ndarray,
         n: int,
         costfn: callable = None,
-        every: int = 10,
         pbar: bool = True,
     ):
         # whether to display a progress bar
         self.pbar = pbar
-        # every n tries, attempt to go to goal
-        self.every = every
         # array containing vertex points
         self.n = n
         # occupancyGrid free space
@@ -71,9 +78,44 @@ class RRT(object):
         self.not_a_dist = np.inf
 
     def route2gv(self, T: nx.DiGraph, gv) -> List[int]:
+        """
+        Returns a list of vertices on `T` that are the shortest path from the root of
+        `T` to the node `gv`. This is a wrapper of `nx.shortest_path`.
+
+        see also, `vertices_as_ndarray` method
+
+        Parameters
+        ----------
+        T : nx.DiGraph
+            The RRT DiGraph object, returned by rrt.make()
+        gv : int
+            vertex of the goal on `T`.
+
+        Returns
+        -------
+        List[int]
+            ordered list of vertices on `T`. Iterating through this list will give the
+            vertices of the tree in order from the root to `gv`.
+        """
         return nx.shortest_path(T, source=0, target=gv, weight="dist")
 
-    def path_points(self, T: nx.DiGraph, path: list) -> np.ndarray:
+    def vertices_as_ndarray(self, T: nx.DiGraph, path: list) -> np.ndarray:
+        """
+        Helper method for obtaining an ordered list of vertices on `T` as an (M x 2)
+        array.
+
+        Parameters
+        ----------
+        T : nx.DiGraph
+            The RRT DiGraph object, returned by rrt.make()
+        path : list
+            List of vertices on the RRT DiGraph object
+
+        Returns
+        -------
+        np.ndarray
+            (M x 2) array of points. M is the number of vertices in `T`.
+        """
         lines = []
         for i in range(len(path) - 1):
             lines.append([T.nodes[path[i]]["pt"], T.nodes[path[i + 1]]["pt"]])
@@ -81,6 +123,22 @@ class RRT(object):
 
     @staticmethod
     def near(points: np.ndarray, x: np.ndarray) -> np.ndarray:
+        """
+        Obtain all points in `points` that are near `x`, sorted in ascending order of
+        distance.
+
+        Parameters
+        ----------
+        points : np.ndarray
+            (M x 2) array of points
+        x : np.ndarray
+            (2, ) array, point to find near
+
+        Returns
+        -------
+        np.ndarray
+            (M x 2) sorted array of points)
+        """
         # vector from x to all points
         p2x = points - x
         # norm of that vector
@@ -91,6 +149,22 @@ class RRT(object):
 
     @staticmethod
     def within(points: np.ndarray, x: np.ndarray, r: float) -> np.ndarray:
+        """Obtain un-ordered array of points that are within `r` of the point `x`.
+
+        Parameters
+        ----------
+        points : np.ndarray
+            (M x 2) array of points
+        x : np.ndarray
+            (2, ) array, point to find near
+        r : float
+            radius to search within
+
+        Returns
+        -------
+        np.ndarray
+            (? x 2) array of points within `r` of `x`
+        """
         # vector from x to all points
         p2x = points - x
         # dot dist with self to get r2
@@ -102,7 +176,22 @@ class RRT(object):
     @staticmethod
     @nb.njit()
     def collisionfree(og, a, b) -> bool:
-        """calculate linear collision on occupancyGrid between points a, b"""
+        """Check occupancyGrid for collisions between points `a` and `b`.
+
+        Parameters
+        ----------
+        og : np.ndarray
+            the occupancyGrid where 0 is free space. Anything other than 0 is treated as an obstacle.
+        a : np.ndarray
+            (2, ) array of integer coordinates point a
+        b : np.ndarray
+            (2, ) array of integer coordinates point b
+
+        Returns
+        -------
+        bool
+            whether or not there is a collision between the two points
+        """
         x0 = a[0]
         y0 = a[1]
         x1 = b[0]
@@ -133,26 +222,85 @@ class RRT(object):
                     y0 += sy
 
     def sample_all_free(self):
-        """sample uniformly from free space in the occupancyGrid."""
+        """
+        Sample uniformly from free space in this object's occupancy grid.
+
+        Returns
+        -------
+        np.ndarray
+            (2, ) array of a point in free space of occupancy grid.
+        """
         return self.free[np.random.choice(self.free.shape[0])]
 
-    def make(self, xstart: np.ndarray, xgoal: np.ndarray):
-        raise NotImplementedError
+    def plan(self, xstart: np.ndarray, xgoal: np.ndarray):
+        """
+        Compute a plan from `xstart` to `xgoal`. Raises an exception if called on the
+        base class.
+
+        Parameters
+        ----------
+        xstart : np.ndarray
+            starting point
+        xgoal : np.ndarray
+            goal point
+
+        Raises
+        ------
+        NotImplementedError
+            if called on the base class
+        """
+        raise NotImplementedError("This method is not implemented in the base class.")
 
     def set_og(self, og_new: np.ndarray):
-        """update occupancyGrid"""
+        """
+        Set a new occupancy grid. This method also updates free space in the passed
+        occupancy grid.
+
+        Parameters
+        ----------
+        og_new : np.ndarray
+            the new occupancy grid
+        """
         self.og = og_new
         self.free = np.argwhere(og_new == 0)
 
     def set_n(self, n: int):
-        """update n"""
+        """Update the number of attempted sample points, `n`.
+
+        Parameters
+        ----------
+        n : int
+            new number of sample points attempted when calling plan() from this object.
+        """
         self.n = n
 
-    def set_every(self, every: int):
-        """update every"""
-        self.every = every
-
     def go2goal(self, vcosts, points, xgoal, j, children, parents):
+        """
+        Attempt to find a path from an existing point on the tree to the goal. This will
+        update `vcosts`, `points`, `children`, and `parents` if a path is found, and
+        return a vertex corresponding to the goal. If no path can be computed from the
+        tree to the goal, the nearest vertex to the goal is selected.
+
+        Parameters
+        ----------
+        vcosts : np.ndarray
+            (M x 1) array of costs to vertices)
+        points : np.ndarray
+            (Mx2) array of points
+        xgoal : np.ndarray
+            (2, ) array of goal point
+        j : int
+            counter for the "current" vertex's index
+        children : dict
+            dict of children of vertices
+        parents : dict
+            dict of parents of children
+
+        Returns
+        -------
+        tuple (int, dict, dict, np.ndarray, np.ndarray)
+            tuple containing (vgoal, children, parents, points, vcosts)
+        """
         # cost for all existing points
         costs = np.empty(vcosts.shape)
         for i in range(points.shape[0]):
@@ -177,6 +325,28 @@ class RRT(object):
         return vgoal, children, parents, points, vcosts
 
     def build_graph(self, vgoal, points, parents, vcosts):
+        """
+        Build the networkx DiGraph object from the points, parents dict, costs dict.
+
+        Parameters
+        ----------
+        vgoal : int
+            index of the goal vertex
+        points : np.ndarray
+            (Mx2) array of points
+        parents : dict
+            array of parents. Each vertex has a single parent (hence, the tree), except
+            the root node which does not have a parent.
+        vcosts : np.ndarray
+            (M, 1) array of costs to vertices
+
+        Returns
+        -------
+        nx.DiGraph
+            Graph of the tree. Edges have attributes: `cost` (the cost of the edge's
+            leaf -- remember, costs are additive!), `dist` (distance between the
+            vertices).
+        """
         assert points.max() < self.not_a_point[0] - 1
         # build graph
         T = nx.DiGraph()
@@ -201,12 +371,31 @@ class RRTStandard(RRT):
         og: np.ndarray,
         n: int,
         costfn: callable = None,
-        every=100,
         pbar=True,
     ):
-        super().__init__(og, n, costfn=costfn, every=every, pbar=pbar)
+        super().__init__(og, n, costfn=costfn, pbar=pbar)
 
-    def make(self, xstart: np.ndarray, xgoal: np.ndarray) -> Tuple[nx.DiGraph, int]:
+    def plan(self, xstart: np.ndarray, xgoal: np.ndarray) -> Tuple[nx.DiGraph, int]:
+        """
+        Compute a plan from `xstart` to `xgoal`. Using the Standard RRT algorithm.
+
+        Compute a plan from `xstart` to `xgoal`. The plan is a tree, with the root at
+        `xstart` and a leaf at `xgoal`. If xgoal could not be connected to the tree, the
+        leaf nearest to xgoal is considered the "goal" leaf.
+
+        Parameters
+        ----------
+        xstart : np.ndarray
+            (2, ) start point
+        xgoal : np.ndarray
+            (2, ) goal point
+
+        Returns
+        -------
+        Tuple[nx.DiGraph, int]
+            DiGraph of the tree, and the vertex of the goal leaf (if goal could be
+            reached) or the closest tree node.
+        """
         sampled = set()
         points = np.full((self.n, 2), dtype=int, fill_value=self.not_a_point)
         vcosts = np.full((self.n,), fill_value=self.not_a_dist)
@@ -260,13 +449,32 @@ class RRTStar(RRT):
         n: int,
         r_rewire: float,
         costfn: callable = None,
-        every=100,
         pbar=True,
     ):
-        super().__init__(og, n, costfn=costfn, every=every, pbar=pbar)
+        super().__init__(og, n, costfn=costfn, pbar=pbar)
         self.r_rewire = r_rewire
 
-    def make(self, xstart: np.ndarray, xgoal: np.ndarray):
+    def plan(self, xstart: np.ndarray, xgoal: np.ndarray):
+        """
+        Compute a plan from `xstart` to `xgoal`. Using the RRT* algorithm.
+
+        The plan is a tree, with the root at
+        `xstart` and a leaf at `xgoal`. If xgoal could not be connected to the tree, the
+        leaf nearest to xgoal is considered the "goal" leaf.
+
+        Parameters
+        ----------
+        xstart : np.ndarray
+            (2, ) start point
+        xgoal : np.ndarray
+            (2, ) goal point
+
+        Returns
+        -------
+        Tuple[nx.DiGraph, int]
+            DiGraph of the tree, and the vertex of the goal leaf (if goal could be
+            reached) or the closest tree node.
+        """
         sampled = set()
         points = np.full((self.n, 2), dtype=int, fill_value=self.not_a_point)
         vcosts = np.full((self.n,), fill_value=self.not_a_dist)
@@ -350,10 +558,9 @@ class RRTStarInformed(RRT):
         r_rewire: float,
         r_goal: float,
         costfn: callable = None,
-        every: int = 100,
         pbar: bool = True,
     ):
-        super().__init__(og, n, costfn=costfn, every=every, pbar=pbar)
+        super().__init__(og, n, costfn=costfn, pbar=pbar)
         self.r_rewire = r_rewire
         self.r_goal = r_goal
         # store the ellipses for plotting later
@@ -434,8 +641,31 @@ class RRTStarInformed(RRT):
         ang = self.rad2deg(np.arctan2((a)[1], (a)[0]))
         return xcent, majax, minax, ang
 
-    def make(self, xstart: np.ndarray, xgoal: np.ndarray):
+    def plan(self, xstart: np.ndarray, xgoal: np.ndarray):
+        """
+        Compute a plan from `xstart` to `xgoal`. Using the RRT* Informed algorithm.
 
+        Keep in mind: if the cost function does not correspond to the Euclidean cost,
+        this algorithm may undersample the solution space -- therefore, for non R^2
+        distance cost functions, it is recommended to use the RRT* algorithm instead.
+
+        The plan is a tree, with the root at `xstart` and a leaf at `xgoal`. If xgoal
+        could not be connected to the tree, the leaf nearest to xgoal is considered the
+        "goal" leaf.
+
+        Parameters
+        ----------
+        xstart : np.ndarray
+            (2, ) start point
+        xgoal : np.ndarray
+            (2, ) goal point
+
+        Returns
+        -------
+        Tuple[nx.DiGraph, int]
+            DiGraph of the tree, and the vertex of the goal leaf (if goal could be
+            reached) or the closest tree node.
+        """
         vsoln = []
         sampled = set()
         points = np.full((self.n, 2), dtype=int, fill_value=self.not_a_point)
