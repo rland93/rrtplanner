@@ -15,7 +15,7 @@ jobs:
     # Standard drop-in approach that should work for most people.
     - uses: ammaraskar/sphinx-action@master
       with:
-        pre-build-command: "pip install sphinx-rtd-theme sphinx-autoapi numpydoc"
+        pre-build-command: "pip install sphinx-rtd-theme sphinx-autoapi numpydoc numpy scipy matplotlib pyfastnoisesimd"
         docs-folder: "docs/"
     # Great extra actions to compose with:
     # Create an artifact of the html output.
