@@ -122,7 +122,7 @@ def make_circle_og(w, h, r):
     x, y = np.meshgrid(np.arange(w), np.arange(h))
     xy = np.stack((x, y), axis=2)
     grid = np.where(
-        (xy[:, :, 0] - w / 2) ** 2 + (xy[:, :, 1] - h / 2) ** 2 < r ** 2, 1, 0
+        (xy[:, :, 0] - w / 2) ** 2 + (xy[:, :, 1] - h / 2) ** 2 < r**2, 1, 0
     )
     return grid.T, xy
 
@@ -136,12 +136,27 @@ def optimal_path(x, h, smin=10.0, sbuf=5.0, ds=1.5, d2s=0.02):
     smin_c = s >= smin
     sbuf_c = s - h >= sbuf
     ds_c = cp.abs(cp.diff(s)) - ds * x_gap <= 0
-    d2s_c = cp.abs(cp.diff(s, 2)) - d2s * x_gap ** 2 <= 0
+    d2s_c = cp.abs(cp.diff(s, 2)) - d2s * x_gap**2 <= 0
 
     constraints = [smin_c, sbuf_c, ds_c, d2s_c]
     problem = cp.Problem(cp.Minimize(cost), constraints)
-    problem.solve(solver="ECOS", verbose=True)
-    return s.value, np.sum(s.value) / np.linalg.norm(x[0, :] - x[-1, :])
+    problem.solve()
+
+    viable_status = [
+        cp.OPTIMAL,
+        cp.OPTIMAL_INACCURATE,
+    ]
+    non_viable_status = [
+        cp.INFEASIBLE,
+        cp.UNBOUNDED,
+        cp.INFEASIBLE_INACCURATE,
+        cp.UNBOUNDED_INACCURATE,
+    ]
+    print(problem.status)
+    if any([problem.status == status for status in viable_status]):
+        return s.value
+    elif any([problem.status == status for status in non_viable_status]):
+        return None
 
 
 if __name__ == "__main__":
@@ -163,6 +178,7 @@ if __name__ == "__main__":
     xa = np.linspace(x1, x2, line_n)
     xb = np.linspace(x1, x3, line_n)
     xc = np.linspace(x1, x4, line_n)
+
     ta = np.linalg.norm((x1 - x2)) / line_n * np.arange(line_n)
     tb = np.linalg.norm((x1 - x3)) / line_n * np.arange(line_n)
     tc = np.linalg.norm((x1 - x4)) / line_n * np.arange(line_n)
@@ -171,29 +187,24 @@ if __name__ == "__main__":
     hb = grid_interp(xb)
     hc = grid_interp(xc)
 
-    sa, ca = optimal_path(xa, ha)
-    sb, cb = optimal_path(xb, hb)
-    sc, cc = optimal_path(xc, hc)
+    sa = optimal_path(xa, ha)
+    sb = optimal_path(xb, hb)
+    sc = optimal_path(xc, hc)
 
-    print(ca, cb, cc)
-
-    fig1, (ax1, ax2) = plt.subplots(nrows=2, tight_layout=True)
+    fig1, (ax1, ax2) = plt.subplots(nrows=2, tight_layout=True, dpi=200)
     ax1.imshow(og.T, cmap="binary")
-    ax1.plot([x1[0], x2[0]], [x1[1], x2[1]], "r-", label="path(a)")
-    ax1.plot([x1[0], x3[0]], [x1[1], x3[1]], "b-", label="path(b)")
-    ax1.plot([x1[0], x4[0]], [x1[1], x4[1]], "g-", label="path(c)")
+    ax1.plot([x1[0], x3[0]], [x1[1], x3[1]], "b:", label="path(a)")
+    ax1.plot([x1[0], x4[0]], [x1[1], x4[1]], "r-.", label="path(b)")
     ax1.set_xlabel("x")
     ax1.set_ylabel("y")
     ax1.legend()
     ax1.set_title("Aerial View of Paths with Obstacle")
 
     ax2.set_title("Height of Paths")
-    ax2.plot(ta, ha, linestyle="-", color="maroon", label="terrain height (a)")
-    ax2.plot(tb, hb, linestyle="-", color="navy", label="terrain height (b)")
-    ax2.plot(tc, hc, linestyle="-", color="green", label="terrain height (c)")
-    ax2.plot(ta, sa, linestyle=":", color="red", label="optimal path (a)")
-    ax2.plot(tb, sb, linestyle=":", color="blue", label="optimal path (b)")
-    ax2.plot(tc, sc, linestyle=":", color="green", label="optimal path (c)")
+    ax2.plot(tb, hb, linestyle="-", color="blue", label="terrain height (a)")
+    ax2.plot(tc, hc, linestyle="-", color="red", label="terrain height (b)")
+    ax2.plot(tb, sb, linestyle=":", color="blue", label="optimal path (a)")
+    ax2.plot(tc, sc, linestyle="-.", color="red", label="optimal path (b)")
     ax2.set_xlabel("distance along path")
     ax2.set_ylabel("height")
     ax2.set_aspect("equal")
