@@ -73,7 +73,7 @@ Once our tree is created, we traverse it to find a path from vertex 0 to the goa
 
 Then, we have computed our path and it is stored in ``path_pts``.
 
-This package includes a number of plotting functions (which use `matplotlib`<https://matplotlib.org/>_) that can be used to visualize the 2-D world and plans in it.
+This package includes a number of plotting functions (which use `matplotlib <https://matplotlib.org/>`_) that can be used to visualize the 2-D world and plans in it.
 
 .. code-block:: python
 
@@ -96,3 +96,38 @@ This package includes a number of plotting functions (which use `matplotlib`<htt
 We see the results of our plan. Because points and obstacles are generated randomly when you run this script, your result should bear a superficial resemblance to the figure below:
 
 .. image:: _static/getting-started-plan.png
+
+The full code used to generate this figure is shown below:
+
+.. code-block:: python
+
+    from rrtplanner import perlin_occupancygrid
+
+    og = perlin_occupancygrid(240, 240, 0.33)
+    from rrtplanner import RRTStar, random_point_og
+    n = 1200
+    r_rewire = 80  # large enough for our 400x400 world
+    rrts = RRTStar(og, n, r_rewire)
+
+    xstart = random_point_og(og)
+    xgoal = random_point_og(og)
+
+    T, gv = rrts.plan(xstart, xgoal)
+
+    path = rrts.route2gv(T, gv)
+    path_pts = rrts.vertices_as_ndarray(T, path)
+
+    from rrtplanner import plot_rrt_lines, plot_path, plot_og, plot_start_goal
+    import matplotlib.pyplot as plt
+
+    # create figure and ax.
+    fig = plt.figure()
+    ax = fig.add_subplot()
+
+    # these functions alter ax in-place.
+    plot_og(ax, og)
+    plot_start_goal(ax, xstart, xgoal)
+    plot_rrt_lines(ax, T)
+    plot_path(ax, path_pts)
+
+    plt.show()
