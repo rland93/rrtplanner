@@ -1,0 +1,216 @@
+:py:mod:`rrtplanner.plots`
+==========================
+
+.. py:module:: rrtplanner.plots
+
+.. autoapi-nested-parse::
+
+   
+   ..
+       !! processed by numpydoc !!
+
+
+Module Contents
+---------------
+
+
+Functions
+~~~~~~~~~
+
+.. autoapisummary::
+
+   rrtplanner.plots.remove_axticks
+   rrtplanner.plots.plot_og
+   rrtplanner.plots.plot_start_goal
+   rrtplanner.plots.plot_rrt_lines
+   rrtplanner.plots.plot_rrt_points
+   rrtplanner.plots.plot_ellipses
+   rrtplanner.plots.plot_path
+
+
+
+Attributes
+~~~~~~~~~~
+
+.. autoapisummary::
+
+   rrtplanner.plots.axs
+
+
+.. py:function:: remove_axticks(ax)
+
+   
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:function:: plot_og(ax: matplotlib.axes.Axes, og: numpy.ndarray, cmap: str = 'Greys', vmin=0, vmax=1)
+
+   
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:function:: plot_start_goal(ax, xstart, xgoal)
+
+   
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:function:: plot_rrt_lines(ax, T, color_costs=True, cmap='viridis', color='tan', alpha=1.0)
+
+   
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:function:: plot_rrt_points(ax, T)
+
+   
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:function:: plot_ellipses(ax, ellipses, cmap='RdPu')
+
+   
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:function:: plot_path(ax, pathlines: numpy.ndarray, zorder=10)
+
+   
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:data:: axs
+   :annotation: = []
+
+   
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+

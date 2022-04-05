@@ -1,0 +1,100 @@
+:py:mod:`rrtplanner.oggen`
+==========================
+
+.. py:module:: rrtplanner.oggen
+
+.. autoapi-nested-parse::
+
+   
+   ..
+       !! processed by numpydoc !!
+
+
+Module Contents
+---------------
+
+
+Functions
+~~~~~~~~~
+
+.. autoapisummary::
+
+   rrtplanner.oggen.perlin_occupancygrid
+
+
+
+Attributes
+~~~~~~~~~~
+
+.. autoapisummary::
+
+   rrtplanner.oggen.fig
+
+
+.. py:function:: perlin_occupancygrid(w: int, h: int, thresh: float = 0.33, frames: int = None) -> numpy.ndarray
+
+   
+   Make an occupancyGrid with thresholded Perlin Noise.
+
+
+   :Parameters:
+
+       **w** : int
+           width of the occupancyGrid
+
+       **h** : int
+           height of the occupancyGrid
+
+       **thresh** : float, optional
+           threshold of the noise. 0.1 produces an occupancyGrid that is mostly free space,
+           0.9 produces an occupancyGrid that is mostly obstacle space. by default 0.3
+
+       **frames** : int, optional
+           number of "frames" of occupancygrid. If a number is passed, this will produce a
+           3-dimensional occupancygrid, with the first dimension being time. This is
+           designed to be used to simulate e.g. a dynamically, but smoothly changing
+           occupancyGrid., by default None
+
+   :Returns:
+
+       np.ndarray
+           occupancyGrid where 1 is occupied and 0 is free space.
+
+
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:data:: fig
+   
+
+   
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+

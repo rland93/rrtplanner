@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>rrtplanner.oggen &mdash; RRT Planner  documentation</title><link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/graphviz.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  <script id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+        <script src="../../../_static/jquery.js"></script>
+        <script src="../../../_static/underscore.js"></script>
+        <script src="../../../_static/doctools.js"></script>
+        <script src="../../../_static/language_data.js"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../../index.html" class="icon icon-home"> RRT Planner
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption"><span class="caption-text">Contents</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../getting-started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/rland93/rrtplanner">Git Repository</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../index.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">RRT Planner</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home"></a> &raquo;</li>
+      <li><code class="xref py py-mod docutils literal notranslate"><span class="pre">rrtplanner.oggen</span></code></li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../../_sources/autoapi/rrtplanner/oggen/index.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="section" id="module-rrtplanner.oggen">
+<span id="rrtplanner-oggen"></span><h1><a class="reference internal" href="#module-rrtplanner.oggen" title="rrtplanner.oggen"><code class="xref py py-mod docutils literal notranslate"><span class="pre">rrtplanner.oggen</span></code></a><a class="headerlink" href="#module-rrtplanner.oggen" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="module-contents">
+<h2>Module Contents<a class="headerlink" href="#module-contents" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="functions">
+<h3>Functions<a class="headerlink" href="#functions" title="Permalink to this headline">¶</a></h3>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#rrtplanner.oggen.perlin_occupancygrid" title="rrtplanner.oggen.perlin_occupancygrid"><code class="xref py py-obj docutils literal notranslate"><span class="pre">perlin_occupancygrid</span></code></a>(w: int, h: int, thresh: float = 0.33, frames: int = None) → numpy.ndarray</p></td>
+<td><p>Make an occupancyGrid with thresholded Perlin Noise.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="attributes">
+<h3>Attributes<a class="headerlink" href="#attributes" title="Permalink to this headline">¶</a></h3>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#rrtplanner.oggen.fig" title="rrtplanner.oggen.fig"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fig</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+<dl class="function">
+<dt id="rrtplanner.oggen.perlin_occupancygrid">
+<code class="sig-prename descclassname">rrtplanner.oggen.</code><code class="sig-name descname">perlin_occupancygrid</code><span class="sig-paren">(</span><em class="sig-param">w: int</em>, <em class="sig-param">h: int</em>, <em class="sig-param">thresh: float = 0.33</em>, <em class="sig-param">frames: int = None</em><span class="sig-paren">)</span> &#x2192; numpy.ndarray<a class="reference internal" href="../../../_modules/rrtplanner/oggen.html#perlin_occupancygrid"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#rrtplanner.oggen.perlin_occupancygrid" title="Permalink to this definition">¶</a></dt>
+<dd><p>Make an occupancyGrid with thresholded Perlin Noise.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>w</strong><span class="classifier">int</span></dt><dd><p>width of the occupancyGrid</p>
+</dd>
+<dt><strong>h</strong><span class="classifier">int</span></dt><dd><p>height of the occupancyGrid</p>
+</dd>
+<dt><strong>thresh</strong><span class="classifier">float, optional</span></dt><dd><p>threshold of the noise. 0.1 produces an occupancyGrid that is mostly free space,
+0.9 produces an occupancyGrid that is mostly obstacle space. by default 0.3</p>
+</dd>
+<dt><strong>frames</strong><span class="classifier">int, optional</span></dt><dd><p>number of “frames” of occupancygrid. If a number is passed, this will produce a
+3-dimensional occupancygrid, with the first dimension being time. This is
+designed to be used to simulate e.g. a dynamically, but smoothly changing
+occupancyGrid., by default None</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt>np.ndarray</dt><dd><p>occupancyGrid where 1 is occupied and 0 is free space.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="data">
+<dt id="rrtplanner.oggen.fig">
+<code class="sig-prename descclassname">rrtplanner.oggen.</code><code class="sig-name descname">fig</code><a class="headerlink" href="#rrtplanner.oggen.fig" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Mike Sutherland.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

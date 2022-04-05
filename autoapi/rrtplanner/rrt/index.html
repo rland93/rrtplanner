@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>rrtplanner.rrt &mdash; RRT Planner  documentation</title><link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/graphviz.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  <script id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+        <script src="../../../_static/jquery.js"></script>
+        <script src="../../../_static/underscore.js"></script>
+        <script src="../../../_static/doctools.js"></script>
+        <script src="../../../_static/language_data.js"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../../index.html" class="icon icon-home"> RRT Planner
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption"><span class="caption-text">Contents</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../getting-started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/rland93/rrtplanner">Git Repository</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../index.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">RRT Planner</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home"></a> &raquo;</li>
+      <li><code class="xref py py-mod docutils literal notranslate"><span class="pre">rrtplanner.rrt</span></code></li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../../_sources/autoapi/rrtplanner/rrt/index.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="section" id="module-rrtplanner.rrt">
+<span id="rrtplanner-rrt"></span><h1><a class="reference internal" href="#module-rrtplanner.rrt" title="rrtplanner.rrt"><code class="xref py py-mod docutils literal notranslate"><span class="pre">rrtplanner.rrt</span></code></a><a class="headerlink" href="#module-rrtplanner.rrt" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="module-contents">
+<h2>Module Contents<a class="headerlink" href="#module-contents" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="classes">
+<h3>Classes<a class="headerlink" href="#classes" title="Permalink to this headline">¶</a></h3>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#rrtplanner.rrt.RRT" title="rrtplanner.rrt.RRT"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RRT</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#rrtplanner.rrt.RRTStandard" title="rrtplanner.rrt.RRTStandard"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RRTStandard</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#rrtplanner.rrt.RRTStar" title="rrtplanner.rrt.RRTStar"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RRTStar</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#rrtplanner.rrt.RRTStarInformed" title="rrtplanner.rrt.RRTStarInformed"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RRTStarInformed</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="functions">
+<h3>Functions<a class="headerlink" href="#functions" title="Permalink to this headline">¶</a></h3>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#rrtplanner.rrt.r2norm" title="rrtplanner.rrt.r2norm"><code class="xref py py-obj docutils literal notranslate"><span class="pre">r2norm</span></code></a>(x)</p></td>
+<td><p>compute 2-norm of a vector</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#rrtplanner.rrt.random_point_og" title="rrtplanner.rrt.random_point_og"><code class="xref py py-obj docutils literal notranslate"><span class="pre">random_point_og</span></code></a>(og: numpy.ndarray) → numpy.ndarray</p></td>
+<td><p>Get a random point in free space from the occupancyGrid.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="attributes">
+<h3>Attributes<a class="headerlink" href="#attributes" title="Permalink to this headline">¶</a></h3>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#rrtplanner.rrt.og" title="rrtplanner.rrt.og"><code class="xref py py-obj docutils literal notranslate"><span class="pre">og</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+<dl class="function">
+<dt id="rrtplanner.rrt.r2norm">
+<code class="sig-prename descclassname">rrtplanner.rrt.</code><code class="sig-name descname">r2norm</code><span class="sig-paren">(</span><em class="sig-param">x</em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/rrtplanner/rrt.html#r2norm"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#rrtplanner.rrt.r2norm" title="Permalink to this definition">¶</a></dt>
+<dd><p>compute 2-norm of a vector</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>x</strong><span class="classifier">np.ndarray</span></dt><dd><p>shape (2, ) array</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt>float</dt><dd><p>2-norm of x</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="rrtplanner.rrt.random_point_og">
+<code class="sig-prename descclassname">rrtplanner.rrt.</code><code class="sig-name descname">random_point_og</code><span class="sig-paren">(</span><em class="sig-param">og: numpy.ndarray</em><span class="sig-paren">)</span> &#x2192; numpy.ndarray<a class="reference internal" href="../../../_modules/rrtplanner/rrt.html#random_point_og"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#rrtplanner.rrt.random_point_og" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get a random point in free space from the occupancyGrid.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>og</strong><span class="classifier">np.ndarray</span></dt><dd><p>occupancyGrid. 1 is obstacle, 0 is free space.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt>np.ndarray</dt><dd><p>randomly-sampled point</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="class">
+<dt id="rrtplanner.rrt.RRT">
+<em class="property">class </em><code class="sig-prename descclassname">rrtplanner.rrt.</code><code class="sig-name descname">RRT</code><span class="sig-paren">(</span><em class="sig-param">og: numpy.ndarray</em>, <em class="sig-param">n: int</em>, <em class="sig-param">costfn: callable = None</em>, <em class="sig-param">pbar: bool = True</em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/rrtplanner/rrt.html#RRT"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#rrtplanner.rrt.RRT" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.10)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<dl class="method">
+<dt id="rrtplanner.rrt.RRT.route2gv">
+<code class="sig-name descname">route2gv</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">T: networkx.DiGraph</em>, <em class="sig-param">gv</em><span class="sig-paren">)</span> &#x2192; List[int]<a class="reference internal" href="../../../_modules/rrtplanner/rrt.html#RRT.route2gv"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#rrtplanner.rrt.RRT.route2gv" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a list of vertices on <cite>T</cite> that are the shortest path from the root of
+<cite>T</cite> to the node <cite>gv</cite>. This is a wrapper of <cite>nx.shortest_path</cite>.</p>
+<p>see also, <cite>vertices_as_ndarray</cite> method</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>T</strong><span class="classifier">nx.DiGraph</span></dt><dd><p>The RRT DiGraph object, returned by rrt.make()</p>
+</dd>
+<dt><strong>gv</strong><span class="classifier">int</span></dt><dd><p>vertex of the goal on <cite>T</cite>.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt>List[int]</dt><dd><p>ordered list of vertices on <cite>T</cite>. Iterating through this list will give the
+vertices of the tree in order from the root to <cite>gv</cite>.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="rrtplanner.rrt.RRT.vertices_as_ndarray">
+<code class="sig-name descname">vertices_as_ndarray</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">T: networkx.DiGraph</em>, <em class="sig-param">path: list</em><span class="sig-paren">)</span> &#x2192; numpy.ndarray<a class="reference internal" href="../../../_modules/rrtplanner/rrt.html#RRT.vertices_as_ndarray"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#rrtplanner.rrt.RRT.vertices_as_ndarray" title="Permalink to this definition">¶</a></dt>
+<dd><p>Helper method for obtaining an ordered list of vertices on <cite>T</cite> as an (M x 2)
+array.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>T</strong><span class="classifier">nx.DiGraph</span></dt><dd><p>The RRT DiGraph object, returned by rrt.make()</p>
+</dd>
+<dt><strong>path</strong><span class="classifier">list</span></dt><dd><p>List of vertices on the RRT DiGraph object</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt>np.ndarray</dt><dd><p>(M x 2) array of points. M is the number of vertices in <cite>T</cite>.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="rrtplanner.rrt.RRT.near">
+<em class="property">static </em><code class="sig-name descname">near</code><span class="sig-paren">(</span><em class="sig-param">points: numpy.ndarray</em>, <em class="sig-param">x: numpy.ndarray</em><span class="sig-paren">)</span> &#x2192; numpy.ndarray<a class="reference internal" href="../../../_modules/rrtplanner/rrt.html#RRT.near"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#rrtplanner.rrt.RRT.near" title="Permalink to this definition">¶</a></dt>
+<dd><p>Obtain all points in <cite>points</cite> that are near <cite>x</cite>, sorted in ascending order of
+distance.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>points</strong><span class="classifier">np.ndarray</span></dt><dd><p>(M x 2) array of points</p>
+</dd>
+<dt><strong>x</strong><span class="classifier">np.ndarray</span></dt><dd><p>(2, ) array, point to find near</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt>np.ndarray</dt><dd><p>(M x 2) sorted array of points)</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="rrtplanner.rrt.RRT.within">
+<em class="property">static </em><code class="sig-name descname">within</code><span class="sig-paren">(</span><em class="sig-param">points: numpy.ndarray</em>, <em class="sig-param">x: numpy.ndarray</em>, <em class="sig-param">r: float</em><span class="sig-paren">)</span> &#x2192; numpy.ndarray<a class="reference internal" href="../../../_modules/rrtplanner/rrt.html#RRT.within"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#rrtplanner.rrt.RRT.within" title="Permalink to this definition">¶</a></dt>
+<dd><p>Obtain un-ordered array of points that are within <cite>r</cite> of the point <cite>x</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>points</strong><span class="classifier">np.ndarray</span></dt><dd><p>(M x 2) array of points</p>
+</dd>
+<dt><strong>x</strong><span class="classifier">np.ndarray</span></dt><dd><p>(2, ) array, point to find near</p>
+</dd>
+<dt><strong>r</strong><span class="classifier">float</span></dt><dd><p>radius to search within</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt>np.ndarray</dt><dd><p>(? x 2) array of points within <cite>r</cite> of <cite>x</cite></p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="rrtplanner.rrt.RRT.collisionfree">
+<em class="property">static </em><code class="sig-name descname">collisionfree</code><span class="sig-paren">(</span><em class="sig-param">og</em>, <em class="sig-param">a</em>, <em class="sig-param">b</em><span class="sig-paren">)</span> &#x2192; bool<a class="reference internal" href="../../../_modules/rrtplanner/rrt.html#RRT.collisionfree"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#rrtplanner.rrt.RRT.collisionfree" title="Permalink to this definition">¶</a></dt>
+<dd><p>Check occupancyGrid for collisions between points <cite>a</cite> and <cite>b</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>og</strong><span class="classifier">np.ndarray</span></dt><dd><p>the occupancyGrid where 0 is free space. Anything other than 0 is treated as an obstacle.</p>
+</dd>
+<dt><strong>a</strong><span class="classifier">np.ndarray</span></dt><dd><p>(2, ) array of integer coordinates point a</p>
+</dd>
+<dt><strong>b</strong><span class="classifier">np.ndarray</span></dt><dd><p>(2, ) array of integer coordinates point b</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt>bool</dt><dd><p>whether or not there is a collision between the two points</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="rrtplanner.rrt.RRT.sample_all_free">
+<code class="sig-name descname">sample_all_free</code><span class="sig-paren">(</span><em class="sig-param">self</em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/rrtplanner/rrt.html#RRT.sample_all_free"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#rrtplanner.rrt.RRT.sample_all_free" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sample uniformly from free space in this object’s occupancy grid.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><dl class="simple">
+<dt>np.ndarray</dt><dd><p>(2, ) array of a point in free space of occupancy grid.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="rrtplanner.rrt.RRT.plan">
+<em class="property">abstract </em><code class="sig-name descname">plan</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">xstart: numpy.ndarray</em>, <em class="sig-param">xgoal: numpy.ndarray</em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/rrtplanner/rrt.html#RRT.plan"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#rrtplanner.rrt.RRT.plan" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute a plan from <cite>xstart</cite> to <cite>xgoal</cite>. Raises an exception if called on the
+base class.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>xstart</strong><span class="classifier">np.ndarray</span></dt><dd><p>starting point</p>
+</dd>
+<dt><strong>xgoal</strong><span class="classifier">np.ndarray</span></dt><dd><p>goal point</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Raises</dt>
+<dd class="field-even"><dl class="simple">
+<dt>NotImplementedError</dt><dd><p>if called on the base class</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="rrtplanner.rrt.RRT.set_og">
+<code class="sig-name descname">set_og</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">og_new: numpy.ndarray</em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/rrtplanner/rrt.html#RRT.set_og"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#rrtplanner.rrt.RRT.set_og" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set a new occupancy grid. This method also updates free space in the passed
+occupancy grid.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>og_new</strong><span class="classifier">np.ndarray</span></dt><dd><p>the new occupancy grid</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="rrtplanner.rrt.RRT.set_n">
+<code class="sig-name descname">set_n</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">n: int</em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/rrtplanner/rrt.html#RRT.set_n"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#rrtplanner.rrt.RRT.set_n" title="Permalink to this definition">¶</a></dt>
+<dd><p>Update the number of attempted sample points, <cite>n</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>n</strong><span class="classifier">int</span></dt><dd><p>new number of sample points attempted when calling plan() from this object.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="rrtplanner.rrt.RRT.go2goal">
+<code class="sig-name descname">go2goal</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">vcosts</em>, <em class="sig-param">points</em>, <em class="sig-param">xgoal</em>, <em class="sig-param">j</em>, <em class="sig-param">children</em>, <em class="sig-param">parents</em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/rrtplanner/rrt.html#RRT.go2goal"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#rrtplanner.rrt.RRT.go2goal" title="Permalink to this definition">¶</a></dt>
+<dd><p>Attempt to find a path from an existing point on the tree to the goal. This will
+update <cite>vcosts</cite>, <cite>points</cite>, <cite>children</cite>, and <cite>parents</cite> if a path is found, and
+return a vertex corresponding to the goal. If no path can be computed from the
+tree to the goal, the nearest vertex to the goal is selected.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>vcosts</strong><span class="classifier">np.ndarray</span></dt><dd><p>(M x 1) array of costs to vertices)</p>
+</dd>
+<dt><strong>points</strong><span class="classifier">np.ndarray</span></dt><dd><p>(Mx2) array of points</p>
+</dd>
+<dt><strong>xgoal</strong><span class="classifier">np.ndarray</span></dt><dd><p>(2, ) array of goal point</p>
+</dd>
+<dt><strong>j</strong><span class="classifier">int</span></dt><dd><p>counter for the “current” vertex’s index</p>
+</dd>
+<dt><strong>children</strong><span class="classifier">dict</span></dt><dd><p>dict of children of vertices</p>
+</dd>
+<dt><strong>parents</strong><span class="classifier">dict</span></dt><dd><p>dict of parents of children</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt>tuple (int, dict, dict, np.ndarray, np.ndarray)</dt><dd><p>tuple containing (vgoal, children, parents, points, vcosts)</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="rrtplanner.rrt.RRT.build_graph">
+<code class="sig-name descname">build_graph</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">vgoal</em>, <em class="sig-param">points</em>, <em class="sig-param">parents</em>, <em class="sig-param">vcosts</em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/rrtplanner/rrt.html#RRT.build_graph"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#rrtplanner.rrt.RRT.build_graph" title="Permalink to this definition">¶</a></dt>
+<dd><p>Build the networkx DiGraph object from the points, parents dict, costs dict.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>vgoal</strong><span class="classifier">int</span></dt><dd><p>index of the goal vertex</p>
+</dd>
+<dt><strong>points</strong><span class="classifier">np.ndarray</span></dt><dd><p>(Mx2) array of points</p>
+</dd>
+<dt><strong>parents</strong><span class="classifier">dict</span></dt><dd><p>array of parents. Each vertex has a single parent (hence, the tree), except
+the root node which does not have a parent.</p>
+</dd>
+<dt><strong>vcosts</strong><span class="classifier">np.ndarray</span></dt><dd><p>(M, 1) array of costs to vertices</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt>nx.DiGraph</dt><dd><p>Graph of the tree. Edges have attributes: <cite>cost</cite> (the cost of the edge’s
+leaf – remember, costs are additive!), <cite>dist</cite> (distance between the
+vertices).</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="rrtplanner.rrt.RRTStandard">
+<em class="property">class </em><code class="sig-prename descclassname">rrtplanner.rrt.</code><code class="sig-name descname">RRTStandard</code><span class="sig-paren">(</span><em class="sig-param">og: numpy.ndarray</em>, <em class="sig-param">n: int</em>, <em class="sig-param">costfn: callable = None</em>, <em class="sig-param">pbar=True</em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/rrtplanner/rrt.html#RRTStandard"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#rrtplanner.rrt.RRTStandard" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#rrtplanner.rrt.RRT" title="rrtplanner.rrt.RRT"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RRT</span></code></a></p>
+<dl class="method">
+<dt id="rrtplanner.rrt.RRTStandard.plan">
+<code class="sig-name descname">plan</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">xstart: numpy.ndarray</em>, <em class="sig-param">xgoal: numpy.ndarray</em><span class="sig-paren">)</span> &#x2192; Tuple[networkx.DiGraph, int]<a class="reference internal" href="../../../_modules/rrtplanner/rrt.html#RRTStandard.plan"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#rrtplanner.rrt.RRTStandard.plan" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute a plan from <cite>xstart</cite> to <cite>xgoal</cite>. Using the Standard RRT algorithm.</p>
+<p>Compute a plan from <cite>xstart</cite> to <cite>xgoal</cite>. The plan is a tree, with the root at
+<cite>xstart</cite> and a leaf at <cite>xgoal</cite>. If xgoal could not be connected to the tree, the
+leaf nearest to xgoal is considered the “goal” leaf.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>xstart</strong><span class="classifier">np.ndarray</span></dt><dd><p>(2, ) start point</p>
+</dd>
+<dt><strong>xgoal</strong><span class="classifier">np.ndarray</span></dt><dd><p>(2, ) goal point</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt>Tuple[nx.DiGraph, int]</dt><dd><p>DiGraph of the tree, and the vertex of the goal leaf (if goal could be
+reached) or the closest tree node.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="rrtplanner.rrt.RRTStar">
+<em class="property">class </em><code class="sig-prename descclassname">rrtplanner.rrt.</code><code class="sig-name descname">RRTStar</code><span class="sig-paren">(</span><em class="sig-param">og: numpy.ndarray</em>, <em class="sig-param">n: int</em>, <em class="sig-param">r_rewire: float</em>, <em class="sig-param">costfn: callable = None</em>, <em class="sig-param">pbar=True</em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/rrtplanner/rrt.html#RRTStar"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#rrtplanner.rrt.RRTStar" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#rrtplanner.rrt.RRT" title="rrtplanner.rrt.RRT"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RRT</span></code></a></p>
+<dl class="method">
+<dt id="rrtplanner.rrt.RRTStar.plan">
+<code class="sig-name descname">plan</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">xstart: numpy.ndarray</em>, <em class="sig-param">xgoal: numpy.ndarray</em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/rrtplanner/rrt.html#RRTStar.plan"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#rrtplanner.rrt.RRTStar.plan" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute a plan from <cite>xstart</cite> to <cite>xgoal</cite>. Using the RRT* algorithm.</p>
+<p>The plan is a tree, with the root at
+<cite>xstart</cite> and a leaf at <cite>xgoal</cite>. If xgoal could not be connected to the tree, the
+leaf nearest to xgoal is considered the “goal” leaf.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>xstart</strong><span class="classifier">np.ndarray</span></dt><dd><p>(2, ) start point</p>
+</dd>
+<dt><strong>xgoal</strong><span class="classifier">np.ndarray</span></dt><dd><p>(2, ) goal point</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt>Tuple[nx.DiGraph, int]</dt><dd><p>DiGraph of the tree, and the vertex of the goal leaf (if goal could be
+reached) or the closest tree node.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="rrtplanner.rrt.RRTStarInformed">
+<em class="property">class </em><code class="sig-prename descclassname">rrtplanner.rrt.</code><code class="sig-name descname">RRTStarInformed</code><span class="sig-paren">(</span><em class="sig-param">og: numpy.ndarray</em>, <em class="sig-param">n: int</em>, <em class="sig-param">r_rewire: float</em>, <em class="sig-param">r_goal: float</em>, <em class="sig-param">costfn: callable = None</em>, <em class="sig-param">pbar: bool = True</em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/rrtplanner/rrt.html#RRTStarInformed"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#rrtplanner.rrt.RRTStarInformed" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#rrtplanner.rrt.RRT" title="rrtplanner.rrt.RRT"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RRT</span></code></a></p>
+<dl class="method">
+<dt id="rrtplanner.rrt.RRTStarInformed.unitball">
+<em class="property">static </em><code class="sig-name descname">unitball</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/rrtplanner/rrt.html#RRTStarInformed.unitball"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#rrtplanner.rrt.RRTStarInformed.unitball" title="Permalink to this definition">¶</a></dt>
+<dd><p>draw a point from a uniform distribution bounded by the ball:
+U(x1, x2) ~ 1 &gt; (x1)^2 + (x2)^2</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="rrtplanner.rrt.RRTStarInformed.sample_ellipse">
+<code class="sig-name descname">sample_ellipse</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">xstart</em>, <em class="sig-param">xgoal</em>, <em class="sig-param">c</em>, <em class="sig-param">clamp=True</em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/rrtplanner/rrt.html#RRTStarInformed.sample_ellipse"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#rrtplanner.rrt.RRTStarInformed.sample_ellipse" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="rrtplanner.rrt.RRTStarInformed.rotation_to_world_frame">
+<code class="sig-name descname">rotation_to_world_frame</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">xstart</em>, <em class="sig-param">xgoal</em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/rrtplanner/rrt.html#RRTStarInformed.rotation_to_world_frame"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#rrtplanner.rrt.RRTStarInformed.rotation_to_world_frame" title="Permalink to this definition">¶</a></dt>
+<dd><p>calculate the rotation matrix from the world-frame to the frame given
+by the hyperellipsoid with focal points at xf1=xstart and xf2=xgoal. a unit
+ball multiplied by this matrix will produce an oriented ellipsoid with those
+focal points.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="rrtplanner.rrt.RRTStarInformed.get_ellipse_xform">
+<code class="sig-name descname">get_ellipse_xform</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">xstart</em>, <em class="sig-param">xgoal</em>, <em class="sig-param">cmax</em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/rrtplanner/rrt.html#RRTStarInformed.get_ellipse_xform"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#rrtplanner.rrt.RRTStarInformed.get_ellipse_xform" title="Permalink to this definition">¶</a></dt>
+<dd><p>transform vector in unit plane to ellipse plane</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="rrtplanner.rrt.RRTStarInformed.least_cost">
+<em class="property">static </em><code class="sig-name descname">least_cost</code><span class="sig-paren">(</span><em class="sig-param">vcosts</em>, <em class="sig-param">vsoln</em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/rrtplanner/rrt.html#RRTStarInformed.least_cost"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#rrtplanner.rrt.RRTStarInformed.least_cost" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="rrtplanner.rrt.RRTStarInformed.rad2deg">
+<em class="property">static </em><code class="sig-name descname">rad2deg</code><span class="sig-paren">(</span><em class="sig-param">a</em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/rrtplanner/rrt.html#RRTStarInformed.rad2deg"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#rrtplanner.rrt.RRTStarInformed.rad2deg" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="rrtplanner.rrt.RRTStarInformed.get_ellipse_for_plt">
+<code class="sig-name descname">get_ellipse_for_plt</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">xstart</em>, <em class="sig-param">xgoal</em>, <em class="sig-param">cmax</em><span class="sig-paren">)</span> &#x2192; Tuple[numpy.ndarray, float, float, float]<a class="reference internal" href="../../../_modules/rrtplanner/rrt.html#RRTStarInformed.get_ellipse_for_plt"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#rrtplanner.rrt.RRTStarInformed.get_ellipse_for_plt" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="rrtplanner.rrt.RRTStarInformed.plan">
+<code class="sig-name descname">plan</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">xstart: numpy.ndarray</em>, <em class="sig-param">xgoal: numpy.ndarray</em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/rrtplanner/rrt.html#RRTStarInformed.plan"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#rrtplanner.rrt.RRTStarInformed.plan" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute a plan from <cite>xstart</cite> to <cite>xgoal</cite>. Using the RRT* Informed algorithm.</p>
+<p>Keep in mind: if the cost function does not correspond to the Euclidean cost,
+this algorithm may undersample the solution space – therefore, for non R^2
+distance cost functions, it is recommended to use the RRT* algorithm instead.</p>
+<p>The plan is a tree, with the root at <cite>xstart</cite> and a leaf at <cite>xgoal</cite>. If xgoal
+could not be connected to the tree, the leaf nearest to xgoal is considered the
+“goal” leaf.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>xstart</strong><span class="classifier">np.ndarray</span></dt><dd><p>(2, ) start point</p>
+</dd>
+<dt><strong>xgoal</strong><span class="classifier">np.ndarray</span></dt><dd><p>(2, ) goal point</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt>Tuple[nx.DiGraph, int]</dt><dd><p>DiGraph of the tree, and the vertex of the goal leaf (if goal could be
+reached) or the closest tree node.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="data">
+<dt id="rrtplanner.rrt.og">
+<code class="sig-prename descclassname">rrtplanner.rrt.</code><code class="sig-name descname">og</code><a class="headerlink" href="#rrtplanner.rrt.og" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Mike Sutherland.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

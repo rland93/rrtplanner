@@ -1,0 +1,193 @@
+:py:mod:`rrtplanner.anim`
+=========================
+
+.. py:module:: rrtplanner.anim
+
+.. autoapi-nested-parse::
+
+   
+   ..
+       !! processed by numpydoc !!
+
+
+Module Contents
+---------------
+
+Classes
+~~~~~~~
+
+.. autoapisummary::
+
+   rrtplanner.anim.DynamicEnvironmentAnimation
+
+
+
+
+Attributes
+~~~~~~~~~~
+
+.. autoapisummary::
+
+   rrtplanner.anim.DEFAULT_APPEARANCE
+   rrtplanner.anim.frames
+
+
+.. py:data:: DEFAULT_APPEARANCE
+   
+
+   
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:class:: DynamicEnvironmentAnimation(movespeed: float, r_within_goal: float, rrtobj: rrtplanner.rrt.RRT, appearance: dict = DEFAULT_APPEARANCE, buffer_size: int = None)
+
+   Bases: :py:obj:`object`
+
+   
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+   .. py:method:: clamp(xy, shape)
+      :staticmethod:
+
+      
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+      ..
+          !! processed by numpydoc !!
+
+   .. py:method:: simulate_dynamic_goals(self, og_3d)
+
+      
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+      ..
+          !! processed by numpydoc !!
+
+   .. py:method:: animate(self, goals, positions, paths, trees, og_3d)
+
+      
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+      ..
+          !! processed by numpydoc !!
+
+   .. py:method:: make_animation(self, og_3d)
+
+      
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+      ..
+          !! processed by numpydoc !!
+
+
+.. py:data:: frames
+   :annotation: = 200
+
+   
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+

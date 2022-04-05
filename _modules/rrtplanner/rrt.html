@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>rrtplanner.rrt &mdash; RRT Planner  documentation</title><link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/graphviz.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script src="../../_static/language_data.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../index.html" class="icon icon-home"> RRT Planner
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption"><span class="caption-text">Contents</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../getting-started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/rland93/rrtplanner">Git Repository</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../autoapi/index.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">RRT Planner</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+      <li>rrtplanner.rrt</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for rrtplanner.rrt</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">numba</span> <span class="k">as</span> <span class="nn">nb</span>
+<span class="kn">from</span> <span class="nn">math</span> <span class="kn">import</span> <span class="n">sqrt</span>
+<span class="kn">from</span> <span class="nn">tqdm</span> <span class="kn">import</span> <span class="n">tqdm</span>
+<span class="kn">import</span> <span class="nn">networkx</span> <span class="k">as</span> <span class="nn">nx</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">List</span>
+<span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">defaultdict</span>
+
+
+<div class="viewcode-block" id="r2norm"><a class="viewcode-back" href="../../autoapi/rrtplanner/rrt/index.html#rrtplanner.r2norm">[docs]</a><span class="nd">@nb</span><span class="o">.</span><span class="n">njit</span><span class="p">(</span><span class="n">fastmath</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">r2norm</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;compute 2-norm of a vector</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    x : np.ndarray</span>
+<span class="sd">        shape (2, ) array</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    float</span>
+<span class="sd">        2-norm of x</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">sqrt</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span></div>
+
+
+<div class="viewcode-block" id="random_point_og"><a class="viewcode-back" href="../../autoapi/rrtplanner/rrt/index.html#rrtplanner.random_point_og">[docs]</a><span class="k">def</span> <span class="nf">random_point_og</span><span class="p">(</span><span class="n">og</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;Get a random point in free space from the occupancyGrid.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    og : np.ndarray</span>
+<span class="sd">        occupancyGrid. 1 is obstacle, 0 is free space.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    np.ndarray</span>
+<span class="sd">        randomly-sampled point</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">free</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argwhere</span><span class="p">(</span><span class="n">og</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">free</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">free</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])]</span></div>
+
+
+<span class="c1">############# RRT BASE CLASS ##########################################################</span>
+
+
+<div class="viewcode-block" id="RRT"><a class="viewcode-back" href="../../autoapi/rrtplanner/rrt/index.html#rrtplanner.RRT">[docs]</a><span class="k">class</span> <span class="nc">RRT</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">og</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+        <span class="n">n</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">costfn</span><span class="p">:</span> <span class="n">callable</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">pbar</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="c1"># whether to display a progress bar</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pbar</span> <span class="o">=</span> <span class="n">pbar</span>
+        <span class="c1"># array containing vertex points</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n</span> <span class="o">=</span> <span class="n">n</span>
+        <span class="c1"># occupancyGrid free space</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">free</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argwhere</span><span class="p">(</span><span class="n">og</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">og</span> <span class="o">=</span> <span class="n">og</span>
+
+        <span class="c1"># define simple r2norm cost function if</span>
+        <span class="c1"># no cost function is passed in</span>
+
+        <span class="k">if</span> <span class="n">costfn</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+
+            <span class="k">def</span> <span class="nf">costfn</span><span class="p">(</span>
+                <span class="n">vcosts</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+                <span class="n">points</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+                <span class="n">v</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+                <span class="n">x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+            <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">vcosts</span><span class="p">[</span><span class="n">v</span><span class="p">]</span> <span class="o">+</span> <span class="n">r2norm</span><span class="p">(</span><span class="n">points</span><span class="p">[</span><span class="n">v</span><span class="p">]</span> <span class="o">-</span> <span class="n">x</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">cost</span> <span class="o">=</span> <span class="n">costfn</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">not_a_point</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">not_a_dist</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span>
+
+<div class="viewcode-block" id="RRT.route2gv"><a class="viewcode-back" href="../../autoapi/rrtplanner/rrt/index.html#rrtplanner.RRT.route2gv">[docs]</a>    <span class="k">def</span> <span class="nf">route2gv</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">T</span><span class="p">:</span> <span class="n">nx</span><span class="o">.</span><span class="n">DiGraph</span><span class="p">,</span> <span class="n">gv</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns a list of vertices on `T` that are the shortest path from the root of</span>
+<span class="sd">        `T` to the node `gv`. This is a wrapper of `nx.shortest_path`.</span>
+
+<span class="sd">        see also, `vertices_as_ndarray` method</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        T : nx.DiGraph</span>
+<span class="sd">            The RRT DiGraph object, returned by rrt.make()</span>
+<span class="sd">        gv : int</span>
+<span class="sd">            vertex of the goal on `T`.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        List[int]</span>
+<span class="sd">            ordered list of vertices on `T`. Iterating through this list will give the</span>
+<span class="sd">            vertices of the tree in order from the root to `gv`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">nx</span><span class="o">.</span><span class="n">shortest_path</span><span class="p">(</span><span class="n">T</span><span class="p">,</span> <span class="n">source</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">target</span><span class="o">=</span><span class="n">gv</span><span class="p">,</span> <span class="n">weight</span><span class="o">=</span><span class="s2">&quot;dist&quot;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="RRT.vertices_as_ndarray"><a class="viewcode-back" href="../../autoapi/rrtplanner/rrt/index.html#rrtplanner.RRT.vertices_as_ndarray">[docs]</a>    <span class="k">def</span> <span class="nf">vertices_as_ndarray</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">T</span><span class="p">:</span> <span class="n">nx</span><span class="o">.</span><span class="n">DiGraph</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">list</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Helper method for obtaining an ordered list of vertices on `T` as an (M x 2)</span>
+<span class="sd">        array.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        T : nx.DiGraph</span>
+<span class="sd">            The RRT DiGraph object, returned by rrt.make()</span>
+<span class="sd">        path : list</span>
+<span class="sd">            List of vertices on the RRT DiGraph object</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        np.ndarray</span>
+<span class="sd">            (M x 2) array of points. M is the number of vertices in `T`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">lines</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">path</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">T</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="n">path</span><span class="p">[</span><span class="n">i</span><span class="p">]][</span><span class="s2">&quot;pt&quot;</span><span class="p">],</span> <span class="n">T</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="n">path</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]][</span><span class="s2">&quot;pt&quot;</span><span class="p">]])</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="RRT.near"><a class="viewcode-back" href="../../autoapi/rrtplanner/rrt/index.html#rrtplanner.RRT.near">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">near</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Obtain all points in `points` that are near `x`, sorted in ascending order of</span>
+<span class="sd">        distance.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        points : np.ndarray</span>
+<span class="sd">            (M x 2) array of points</span>
+<span class="sd">        x : np.ndarray</span>
+<span class="sd">            (2, ) array, point to find near</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        np.ndarray</span>
+<span class="sd">            (M x 2) sorted array of points)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># vector from x to all points</span>
+        <span class="n">p2x</span> <span class="o">=</span> <span class="n">points</span> <span class="o">-</span> <span class="n">x</span>
+        <span class="c1"># norm of that vector</span>
+        <span class="n">dist</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">p2x</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="c1"># sorted norms</span>
+        <span class="nb">sorted</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="n">dist</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">sorted</span></div>
+
+<div class="viewcode-block" id="RRT.within"><a class="viewcode-back" href="../../autoapi/rrtplanner/rrt/index.html#rrtplanner.RRT.within">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">within</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">r</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Obtain un-ordered array of points that are within `r` of the point `x`.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        points : np.ndarray</span>
+<span class="sd">            (M x 2) array of points</span>
+<span class="sd">        x : np.ndarray</span>
+<span class="sd">            (2, ) array, point to find near</span>
+<span class="sd">        r : float</span>
+<span class="sd">            radius to search within</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        np.ndarray</span>
+<span class="sd">            (? x 2) array of points within `r` of `x`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># vector from x to all points</span>
+        <span class="n">p2x</span> <span class="o">=</span> <span class="n">points</span> <span class="o">-</span> <span class="n">x</span>
+        <span class="c1"># dot dist with self to get r2</span>
+        <span class="n">d2</span> <span class="o">=</span> <span class="n">p2x</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">p2x</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">p2x</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">p2x</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span>
+        <span class="c1"># get indices of points within r2</span>
+        <span class="n">near_idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argwhere</span><span class="p">(</span><span class="n">d2</span> <span class="o">&lt;</span> <span class="n">r</span> <span class="o">*</span> <span class="n">r</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">atleast_1d</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="n">near_idx</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="RRT.collisionfree"><a class="viewcode-back" href="../../autoapi/rrtplanner/rrt/index.html#rrtplanner.RRT.collisionfree">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="nd">@nb</span><span class="o">.</span><span class="n">njit</span><span class="p">()</span>
+    <span class="k">def</span> <span class="nf">collisionfree</span><span class="p">(</span><span class="n">og</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Check occupancyGrid for collisions between points `a` and `b`.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        og : np.ndarray</span>
+<span class="sd">            the occupancyGrid where 0 is free space. Anything other than 0 is treated as an obstacle.</span>
+<span class="sd">        a : np.ndarray</span>
+<span class="sd">            (2, ) array of integer coordinates point a</span>
+<span class="sd">        b : np.ndarray</span>
+<span class="sd">            (2, ) array of integer coordinates point b</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        bool</span>
+<span class="sd">            whether or not there is a collision between the two points</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">x0</span> <span class="o">=</span> <span class="n">a</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">y0</span> <span class="o">=</span> <span class="n">a</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">x1</span> <span class="o">=</span> <span class="n">b</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">y1</span> <span class="o">=</span> <span class="n">b</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">dx</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">x1</span> <span class="o">-</span> <span class="n">x0</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">x0</span> <span class="o">&lt;</span> <span class="n">x1</span><span class="p">:</span>
+            <span class="n">sx</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">sx</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+        <span class="n">dy</span> <span class="o">=</span> <span class="o">-</span><span class="nb">abs</span><span class="p">(</span><span class="n">y1</span> <span class="o">-</span> <span class="n">y0</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">y0</span> <span class="o">&lt;</span> <span class="n">y1</span><span class="p">:</span>
+            <span class="n">sy</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">sy</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+        <span class="n">err</span> <span class="o">=</span> <span class="n">dx</span> <span class="o">+</span> <span class="n">dy</span>
+        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">og</span><span class="p">[</span><span class="n">x0</span><span class="p">,</span> <span class="n">y0</span><span class="p">]</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">False</span>
+            <span class="k">elif</span> <span class="n">x0</span> <span class="o">==</span> <span class="n">x1</span> <span class="ow">and</span> <span class="n">y0</span> <span class="o">==</span> <span class="n">y1</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">True</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">e2</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">err</span>
+                <span class="k">if</span> <span class="n">e2</span> <span class="o">&gt;=</span> <span class="n">dy</span><span class="p">:</span>
+                    <span class="n">err</span> <span class="o">+=</span> <span class="n">dy</span>
+                    <span class="n">x0</span> <span class="o">+=</span> <span class="n">sx</span>
+                <span class="k">if</span> <span class="n">e2</span> <span class="o">&lt;=</span> <span class="n">dx</span><span class="p">:</span>
+                    <span class="n">err</span> <span class="o">+=</span> <span class="n">dx</span>
+                    <span class="n">y0</span> <span class="o">+=</span> <span class="n">sy</span></div>
+
+<div class="viewcode-block" id="RRT.sample_all_free"><a class="viewcode-back" href="../../autoapi/rrtplanner/rrt/index.html#rrtplanner.RRT.sample_all_free">[docs]</a>    <span class="k">def</span> <span class="nf">sample_all_free</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Sample uniformly from free space in this object&#39;s occupancy grid.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        np.ndarray</span>
+<span class="sd">            (2, ) array of a point in free space of occupancy grid.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">free</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">free</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])]</span></div>
+
+<div class="viewcode-block" id="RRT.plan"><a class="viewcode-back" href="../../autoapi/rrtplanner/rrt/index.html#rrtplanner.RRT.plan">[docs]</a>    <span class="k">def</span> <span class="nf">plan</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">xstart</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">xgoal</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Compute a plan from `xstart` to `xgoal`. Raises an exception if called on the</span>
+<span class="sd">        base class.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        xstart : np.ndarray</span>
+<span class="sd">            starting point</span>
+<span class="sd">        xgoal : np.ndarray</span>
+<span class="sd">            goal point</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        NotImplementedError</span>
+<span class="sd">            if called on the base class</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;This method is not implemented in the base class.&quot;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="RRT.set_og"><a class="viewcode-back" href="../../autoapi/rrtplanner/rrt/index.html#rrtplanner.RRT.set_og">[docs]</a>    <span class="k">def</span> <span class="nf">set_og</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">og_new</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Set a new occupancy grid. This method also updates free space in the passed</span>
+<span class="sd">        occupancy grid.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        og_new : np.ndarray</span>
+<span class="sd">            the new occupancy grid</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">og</span> <span class="o">=</span> <span class="n">og_new</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">free</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argwhere</span><span class="p">(</span><span class="n">og_new</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="RRT.set_n"><a class="viewcode-back" href="../../autoapi/rrtplanner/rrt/index.html#rrtplanner.RRT.set_n">[docs]</a>    <span class="k">def</span> <span class="nf">set_n</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Update the number of attempted sample points, `n`.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        n : int</span>
+<span class="sd">            new number of sample points attempted when calling plan() from this object.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n</span> <span class="o">=</span> <span class="n">n</span></div>
+
+<div class="viewcode-block" id="RRT.go2goal"><a class="viewcode-back" href="../../autoapi/rrtplanner/rrt/index.html#rrtplanner.RRT.go2goal">[docs]</a>    <span class="k">def</span> <span class="nf">go2goal</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vcosts</span><span class="p">,</span> <span class="n">points</span><span class="p">,</span> <span class="n">xgoal</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">children</span><span class="p">,</span> <span class="n">parents</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Attempt to find a path from an existing point on the tree to the goal. This will</span>
+<span class="sd">        update `vcosts`, `points`, `children`, and `parents` if a path is found, and</span>
+<span class="sd">        return a vertex corresponding to the goal. If no path can be computed from the</span>
+<span class="sd">        tree to the goal, the nearest vertex to the goal is selected.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        vcosts : np.ndarray</span>
+<span class="sd">            (M x 1) array of costs to vertices)</span>
+<span class="sd">        points : np.ndarray</span>
+<span class="sd">            (Mx2) array of points</span>
+<span class="sd">        xgoal : np.ndarray</span>
+<span class="sd">            (2, ) array of goal point</span>
+<span class="sd">        j : int</span>
+<span class="sd">            counter for the &quot;current&quot; vertex&#39;s index</span>
+<span class="sd">        children : dict</span>
+<span class="sd">            dict of children of vertices</span>
+<span class="sd">        parents : dict</span>
+<span class="sd">            dict of parents of children</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        tuple (int, dict, dict, np.ndarray, np.ndarray)</span>
+<span class="sd">            tuple containing (vgoal, children, parents, points, vcosts)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># cost for all existing points</span>
+        <span class="n">costs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">vcosts</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">points</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+            <span class="n">costs</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cost</span><span class="p">(</span><span class="n">vcosts</span><span class="p">,</span> <span class="n">points</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">xgoal</span><span class="p">)</span>
+
+        <span class="n">found_goal</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="n">costs</span><span class="p">):</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">collisionfree</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">og</span><span class="p">,</span> <span class="n">points</span><span class="p">[</span><span class="n">idx</span><span class="p">],</span> <span class="n">xgoal</span><span class="p">):</span>
+                <span class="n">vgoal</span> <span class="o">=</span> <span class="n">j</span>
+                <span class="n">points</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">((</span><span class="n">points</span><span class="p">,</span> <span class="n">xgoal</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:]),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+                <span class="n">vcosts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">((</span><span class="n">vcosts</span><span class="p">,</span> <span class="p">[</span><span class="n">costs</span><span class="p">[</span><span class="n">idx</span><span class="p">]]),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+                <span class="n">points</span><span class="p">[</span><span class="n">vgoal</span><span class="p">]</span> <span class="o">=</span> <span class="n">xgoal</span>
+                <span class="n">vcosts</span><span class="p">[</span><span class="n">vgoal</span><span class="p">]</span> <span class="o">=</span> <span class="n">costs</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
+                <span class="n">children</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">vgoal</span><span class="p">)</span>
+                <span class="n">parents</span><span class="p">[</span><span class="n">vgoal</span><span class="p">]</span> <span class="o">=</span> <span class="n">idx</span>
+                <span class="n">found_goal</span> <span class="o">=</span> <span class="kc">True</span>
+                <span class="k">break</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">found_goal</span><span class="p">:</span>
+            <span class="c1"># shrink points array</span>
+            <span class="n">dists</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">points</span> <span class="o">-</span> <span class="n">xgoal</span><span class="p">)</span>
+            <span class="n">vgoal</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="n">dists</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">vgoal</span><span class="p">,</span> <span class="n">children</span><span class="p">,</span> <span class="n">parents</span><span class="p">,</span> <span class="n">points</span><span class="p">,</span> <span class="n">vcosts</span></div>
+
+<div class="viewcode-block" id="RRT.build_graph"><a class="viewcode-back" href="../../autoapi/rrtplanner/rrt/index.html#rrtplanner.RRT.build_graph">[docs]</a>    <span class="k">def</span> <span class="nf">build_graph</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vgoal</span><span class="p">,</span> <span class="n">points</span><span class="p">,</span> <span class="n">parents</span><span class="p">,</span> <span class="n">vcosts</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Build the networkx DiGraph object from the points, parents dict, costs dict.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        vgoal : int</span>
+<span class="sd">            index of the goal vertex</span>
+<span class="sd">        points : np.ndarray</span>
+<span class="sd">            (Mx2) array of points</span>
+<span class="sd">        parents : dict</span>
+<span class="sd">            array of parents. Each vertex has a single parent (hence, the tree), except</span>
+<span class="sd">            the root node which does not have a parent.</span>
+<span class="sd">        vcosts : np.ndarray</span>
+<span class="sd">            (M, 1) array of costs to vertices</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        nx.DiGraph</span>
+<span class="sd">            Graph of the tree. Edges have attributes: `cost` (the cost of the edge&#39;s</span>
+<span class="sd">            leaf -- remember, costs are additive!), `dist` (distance between the</span>
+<span class="sd">            vertices).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="n">points</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">not_a_point</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span>
+        <span class="c1"># build graph</span>
+        <span class="n">T</span> <span class="o">=</span> <span class="n">nx</span><span class="o">.</span><span class="n">DiGraph</span><span class="p">()</span>
+        <span class="n">T</span><span class="o">.</span><span class="n">add_node</span><span class="p">(</span><span class="n">vgoal</span><span class="p">,</span> <span class="n">pt</span><span class="o">=</span><span class="n">points</span><span class="p">[</span><span class="n">vgoal</span><span class="p">])</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">p</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">points</span><span class="p">):</span>
+            <span class="n">T</span><span class="o">.</span><span class="n">add_node</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">pt</span><span class="o">=</span><span class="n">p</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">child</span><span class="p">,</span> <span class="n">parent</span> <span class="ow">in</span> <span class="n">parents</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">parent</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">p1</span><span class="p">,</span> <span class="n">p2</span> <span class="o">=</span> <span class="n">points</span><span class="p">[</span><span class="n">parent</span><span class="p">],</span> <span class="n">points</span><span class="p">[</span><span class="n">child</span><span class="p">]</span>
+                <span class="n">dist</span> <span class="o">=</span> <span class="n">r2norm</span><span class="p">(</span><span class="n">p2</span> <span class="o">-</span> <span class="n">p1</span><span class="p">)</span>
+                <span class="n">T</span><span class="o">.</span><span class="n">add_edge</span><span class="p">(</span><span class="n">parent</span><span class="p">,</span> <span class="n">child</span><span class="p">,</span> <span class="n">dist</span><span class="o">=</span><span class="n">dist</span><span class="p">,</span> <span class="n">cost</span><span class="o">=</span><span class="n">vcosts</span><span class="p">[</span><span class="n">child</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">T</span></div></div>
+
+
+<span class="c1">############# RRT STANDARD ####################################################</span>
+
+
+<div class="viewcode-block" id="RRTStandard"><a class="viewcode-back" href="../../autoapi/rrtplanner/rrt/index.html#rrtplanner.RRTStandard">[docs]</a><span class="k">class</span> <span class="nc">RRTStandard</span><span class="p">(</span><span class="n">RRT</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">og</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+        <span class="n">n</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">costfn</span><span class="p">:</span> <span class="n">callable</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">pbar</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">og</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">costfn</span><span class="o">=</span><span class="n">costfn</span><span class="p">,</span> <span class="n">pbar</span><span class="o">=</span><span class="n">pbar</span><span class="p">)</span>
+
+<div class="viewcode-block" id="RRTStandard.plan"><a class="viewcode-back" href="../../autoapi/rrtplanner/rrt/index.html#rrtplanner.RRTStandard.plan">[docs]</a>    <span class="k">def</span> <span class="nf">plan</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">xstart</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">xgoal</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">nx</span><span class="o">.</span><span class="n">DiGraph</span><span class="p">,</span> <span class="nb">int</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Compute a plan from `xstart` to `xgoal`. Using the Standard RRT algorithm.</span>
+
+<span class="sd">        Compute a plan from `xstart` to `xgoal`. The plan is a tree, with the root at</span>
+<span class="sd">        `xstart` and a leaf at `xgoal`. If xgoal could not be connected to the tree, the</span>
+<span class="sd">        leaf nearest to xgoal is considered the &quot;goal&quot; leaf.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        xstart : np.ndarray</span>
+<span class="sd">            (2, ) start point</span>
+<span class="sd">        xgoal : np.ndarray</span>
+<span class="sd">            (2, ) goal point</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        Tuple[nx.DiGraph, int]</span>
+<span class="sd">            DiGraph of the tree, and the vertex of the goal leaf (if goal could be</span>
+<span class="sd">            reached) or the closest tree node.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">sampled</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+        <span class="n">points</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">n</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">fill_value</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">not_a_point</span><span class="p">)</span>
+        <span class="n">vcosts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">n</span><span class="p">,),</span> <span class="n">fill_value</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">not_a_dist</span><span class="p">)</span>
+        <span class="n">parents</span><span class="p">,</span> <span class="n">children</span> <span class="o">=</span> <span class="p">{},</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">list</span><span class="p">)</span>
+        <span class="n">points</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">xstart</span>
+        <span class="n">vcosts</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">parents</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">i</span><span class="p">,</span> <span class="n">j</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">pbar</span><span class="p">:</span>
+            <span class="n">pbar</span> <span class="o">=</span> <span class="n">tqdm</span><span class="p">(</span><span class="n">total</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">n</span><span class="p">)</span>
+
+        <span class="k">while</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">n</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">pbar</span><span class="p">:</span>
+                <span class="n">pbar</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">xnew</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample_all_free</span><span class="p">()</span>
+            <span class="n">vnearest</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">near</span><span class="p">(</span><span class="n">points</span><span class="p">,</span> <span class="n">xnew</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">xnearest</span> <span class="o">=</span> <span class="n">points</span><span class="p">[</span><span class="n">vnearest</span><span class="p">]</span>
+            <span class="n">nocoll</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">collisionfree</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">og</span><span class="p">,</span> <span class="n">xnearest</span><span class="p">,</span> <span class="n">xnew</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">nocoll</span> <span class="ow">and</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">xnew</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">sampled</span> <span class="ow">and</span> <span class="n">j</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">n</span><span class="p">:</span>
+                <span class="n">sampled</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="n">xnew</span><span class="p">))</span>
+                <span class="c1"># check least cost path to xnew</span>
+                <span class="n">vbest</span> <span class="o">=</span> <span class="n">vnearest</span>
+                <span class="c1"># store new point</span>
+                <span class="n">vnew</span> <span class="o">=</span> <span class="n">j</span>
+                <span class="n">points</span><span class="p">[</span><span class="n">vnew</span><span class="p">]</span> <span class="o">=</span> <span class="n">xnew</span>
+                <span class="n">vcosts</span><span class="p">[</span><span class="n">vnew</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cost</span><span class="p">(</span><span class="n">vcosts</span><span class="p">,</span> <span class="n">points</span><span class="p">,</span> <span class="n">vbest</span><span class="p">,</span> <span class="n">xnew</span><span class="p">)</span>
+                <span class="c1"># store new edge</span>
+                <span class="n">children</span><span class="p">[</span><span class="n">vbest</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">vnew</span><span class="p">)</span>
+                <span class="n">parents</span><span class="p">[</span><span class="n">vnew</span><span class="p">]</span> <span class="o">=</span> <span class="n">vbest</span>
+                <span class="n">j</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="n">i</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="c1"># go to goal if possible</span>
+        <span class="n">vgoal</span><span class="p">,</span> <span class="n">children</span><span class="p">,</span> <span class="n">parents</span><span class="p">,</span> <span class="n">points</span><span class="p">,</span> <span class="n">vcosts</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">go2goal</span><span class="p">(</span>
+            <span class="n">vcosts</span><span class="p">,</span> <span class="n">points</span><span class="p">,</span> <span class="n">xgoal</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">children</span><span class="p">,</span> <span class="n">parents</span>
+        <span class="p">)</span>
+
+        <span class="c1"># build graph</span>
+        <span class="n">T</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">build_graph</span><span class="p">(</span><span class="n">vgoal</span><span class="p">,</span> <span class="n">points</span><span class="p">,</span> <span class="n">parents</span><span class="p">,</span> <span class="n">vcosts</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">T</span><span class="p">,</span> <span class="n">vgoal</span></div></div>
+
+
+<span class="c1">########### RRT STAR ##########################################################</span>
+
+
+<div class="viewcode-block" id="RRTStar"><a class="viewcode-back" href="../../autoapi/rrtplanner/rrt/index.html#rrtplanner.RRTStar">[docs]</a><span class="k">class</span> <span class="nc">RRTStar</span><span class="p">(</span><span class="n">RRT</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">og</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+        <span class="n">n</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">r_rewire</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+        <span class="n">costfn</span><span class="p">:</span> <span class="n">callable</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">pbar</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">og</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">costfn</span><span class="o">=</span><span class="n">costfn</span><span class="p">,</span> <span class="n">pbar</span><span class="o">=</span><span class="n">pbar</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">r_rewire</span> <span class="o">=</span> <span class="n">r_rewire</span>
+
+<div class="viewcode-block" id="RRTStar.plan"><a class="viewcode-back" href="../../autoapi/rrtplanner/rrt/index.html#rrtplanner.RRTStar.plan">[docs]</a>    <span class="k">def</span> <span class="nf">plan</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">xstart</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">xgoal</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Compute a plan from `xstart` to `xgoal`. Using the RRT* algorithm.</span>
+
+<span class="sd">        The plan is a tree, with the root at</span>
+<span class="sd">        `xstart` and a leaf at `xgoal`. If xgoal could not be connected to the tree, the</span>
+<span class="sd">        leaf nearest to xgoal is considered the &quot;goal&quot; leaf.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        xstart : np.ndarray</span>
+<span class="sd">            (2, ) start point</span>
+<span class="sd">        xgoal : np.ndarray</span>
+<span class="sd">            (2, ) goal point</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        Tuple[nx.DiGraph, int]</span>
+<span class="sd">            DiGraph of the tree, and the vertex of the goal leaf (if goal could be</span>
+<span class="sd">            reached) or the closest tree node.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">sampled</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+        <span class="n">points</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">n</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">fill_value</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">not_a_point</span><span class="p">)</span>
+        <span class="n">vcosts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">n</span><span class="p">,),</span> <span class="n">fill_value</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">not_a_dist</span><span class="p">)</span>
+        <span class="n">children</span><span class="p">,</span> <span class="n">parents</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">list</span><span class="p">),</span> <span class="p">{}</span>
+        <span class="n">points</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">xstart</span>
+        <span class="n">vcosts</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">parents</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">i</span><span class="p">,</span> <span class="n">j</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">pbar</span><span class="p">:</span>
+            <span class="n">pbar</span> <span class="o">=</span> <span class="n">tqdm</span><span class="p">(</span><span class="n">total</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">n</span><span class="p">)</span>
+
+        <span class="k">while</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">n</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">pbar</span><span class="p">:</span>
+                <span class="n">pbar</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+            <span class="n">xnew</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample_all_free</span><span class="p">()</span>
+            <span class="n">vnearest</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">near</span><span class="p">(</span><span class="n">points</span><span class="p">,</span> <span class="n">xnew</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">xnearest</span> <span class="o">=</span> <span class="n">points</span><span class="p">[</span><span class="n">vnearest</span><span class="p">]</span>
+
+            <span class="n">nocoll</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">collisionfree</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">og</span><span class="p">,</span> <span class="n">xnearest</span><span class="p">,</span> <span class="n">xnew</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">nocoll</span> <span class="ow">and</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">xnew</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">sampled</span> <span class="ow">and</span> <span class="n">j</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">n</span><span class="p">:</span>
+                <span class="n">sampled</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="n">xnew</span><span class="p">))</span>
+
+                <span class="c1"># check least cost path to xnew</span>
+                <span class="n">vbest</span> <span class="o">=</span> <span class="n">vnearest</span>
+                <span class="n">cbest</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cost</span><span class="p">(</span><span class="n">vcosts</span><span class="p">,</span> <span class="n">points</span><span class="p">,</span> <span class="n">vbest</span><span class="p">,</span> <span class="n">xnew</span><span class="p">)</span>
+                <span class="n">vnear</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">within</span><span class="p">(</span><span class="n">points</span><span class="p">,</span> <span class="n">xnew</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">r_rewire</span><span class="p">)</span>
+
+                <span class="k">for</span> <span class="n">vn</span> <span class="ow">in</span> <span class="n">vnear</span><span class="p">:</span>
+                    <span class="n">xn</span> <span class="o">=</span> <span class="n">points</span><span class="p">[</span><span class="n">vn</span><span class="p">]</span>
+                    <span class="n">cn</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cost</span><span class="p">(</span><span class="n">vcosts</span><span class="p">,</span> <span class="n">points</span><span class="p">,</span> <span class="n">vn</span><span class="p">,</span> <span class="n">xnew</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">cn</span> <span class="o">&lt;</span> <span class="n">cbest</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">collisionfree</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">og</span><span class="p">,</span> <span class="n">xn</span><span class="p">,</span> <span class="n">xnew</span><span class="p">):</span>
+                            <span class="n">vbest</span> <span class="o">=</span> <span class="n">vn</span>
+                            <span class="n">cbest</span> <span class="o">=</span> <span class="n">cn</span>
+
+                <span class="c1"># store new point</span>
+                <span class="n">vnew</span> <span class="o">=</span> <span class="n">j</span>
+                <span class="n">points</span><span class="p">[</span><span class="n">vnew</span><span class="p">]</span> <span class="o">=</span> <span class="n">xnew</span>
+                <span class="n">vcosts</span><span class="p">[</span><span class="n">vnew</span><span class="p">]</span> <span class="o">=</span> <span class="n">cbest</span>
+                <span class="c1"># store new edge</span>
+                <span class="n">parents</span><span class="p">[</span><span class="n">vnew</span><span class="p">]</span> <span class="o">=</span> <span class="n">vbest</span>
+                <span class="n">children</span><span class="p">[</span><span class="n">vbest</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">vnew</span><span class="p">)</span>
+
+                <span class="c1"># tree rewire</span>
+                <span class="k">for</span> <span class="n">vn</span> <span class="ow">in</span> <span class="n">vnear</span><span class="p">:</span>
+                    <span class="n">xn</span> <span class="o">=</span> <span class="n">points</span><span class="p">[</span><span class="n">vn</span><span class="p">]</span>
+                    <span class="n">cn</span> <span class="o">=</span> <span class="n">vcosts</span><span class="p">[</span><span class="n">vn</span><span class="p">]</span>
+                    <span class="n">cmaybe</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cost</span><span class="p">(</span><span class="n">vcosts</span><span class="p">,</span> <span class="n">points</span><span class="p">,</span> <span class="n">vn</span><span class="p">,</span> <span class="n">xnew</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">cmaybe</span> <span class="o">&lt;</span> <span class="n">cn</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">collisionfree</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">og</span><span class="p">,</span> <span class="n">xn</span><span class="p">,</span> <span class="n">xnew</span><span class="p">):</span>
+                            <span class="n">parent</span> <span class="o">=</span> <span class="n">parents</span><span class="p">[</span><span class="n">vn</span><span class="p">]</span>
+                            <span class="k">if</span> <span class="n">parent</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                                <span class="c1"># reassign parent</span>
+                                <span class="k">try</span><span class="p">:</span>
+                                    <span class="n">children</span><span class="p">[</span><span class="n">parent</span><span class="p">]</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">vn</span><span class="p">)</span>
+                                    <span class="n">parents</span><span class="p">[</span><span class="n">vn</span><span class="p">]</span> <span class="o">=</span> <span class="n">vnew</span>
+                                    <span class="n">vcosts</span><span class="p">[</span><span class="n">vn</span><span class="p">]</span> <span class="o">=</span> <span class="n">cmaybe</span>
+                                <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+                                    <span class="k">pass</span>
+                <span class="n">j</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="n">i</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="c1"># go to goal if possible</span>
+        <span class="n">vgoal</span><span class="p">,</span> <span class="n">children</span><span class="p">,</span> <span class="n">parents</span><span class="p">,</span> <span class="n">points</span><span class="p">,</span> <span class="n">vcosts</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">go2goal</span><span class="p">(</span>
+            <span class="n">vcosts</span><span class="p">,</span> <span class="n">points</span><span class="p">,</span> <span class="n">xgoal</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">children</span><span class="p">,</span> <span class="n">parents</span>
+        <span class="p">)</span>
+        <span class="c1"># build graph</span>
+        <span class="n">T</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">build_graph</span><span class="p">(</span><span class="n">vgoal</span><span class="p">,</span> <span class="n">points</span><span class="p">,</span> <span class="n">parents</span><span class="p">,</span> <span class="n">vcosts</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">T</span><span class="p">,</span> <span class="n">vgoal</span></div></div>
+
+
+<span class="c1">########### RRT STAR INFORMED #################################################</span>
+
+
+<div class="viewcode-block" id="RRTStarInformed"><a class="viewcode-back" href="../../autoapi/rrtplanner/rrt/index.html#rrtplanner.RRTStarInformed">[docs]</a><span class="k">class</span> <span class="nc">RRTStarInformed</span><span class="p">(</span><span class="n">RRT</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">og</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+        <span class="n">n</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">r_rewire</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+        <span class="n">r_goal</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+        <span class="n">costfn</span><span class="p">:</span> <span class="n">callable</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">pbar</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">og</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">costfn</span><span class="o">=</span><span class="n">costfn</span><span class="p">,</span> <span class="n">pbar</span><span class="o">=</span><span class="n">pbar</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">r_rewire</span> <span class="o">=</span> <span class="n">r_rewire</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">r_goal</span> <span class="o">=</span> <span class="n">r_goal</span>
+        <span class="c1"># store the ellipses for plotting later</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ellipses</span> <span class="o">=</span> <span class="p">{}</span>
+
+<div class="viewcode-block" id="RRTStarInformed.unitball"><a class="viewcode-back" href="../../autoapi/rrtplanner/rrt/index.html#rrtplanner.RRTStarInformed.unitball">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">unitball</span><span class="p">():</span>
+        <span class="sd">&quot;&quot;&quot;draw a point from a uniform distribution bounded by the ball:</span>
+<span class="sd">        U(x1, x2) ~ 1 &gt; (x1)^2 + (x2)^2&quot;&quot;&quot;</span>
+        <span class="n">r</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">theta</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">r</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">theta</span><span class="p">)</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">r</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">theta</span><span class="p">)</span>
+        <span class="n">unif</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">unif</span></div>
+
+<div class="viewcode-block" id="RRTStarInformed.sample_ellipse"><a class="viewcode-back" href="../../autoapi/rrtplanner/rrt/index.html#rrtplanner.RRTStarInformed.sample_ellipse">[docs]</a>    <span class="k">def</span> <span class="nf">sample_ellipse</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">xstart</span><span class="p">,</span> <span class="n">xgoal</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">clamp</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="n">xcent</span> <span class="o">=</span> <span class="p">(</span><span class="n">xstart</span> <span class="o">+</span> <span class="n">xgoal</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span>
+        <span class="n">CL</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_ellipse_xform</span><span class="p">(</span><span class="n">xstart</span><span class="p">,</span> <span class="n">xgoal</span><span class="p">,</span> <span class="n">c</span><span class="p">)</span>
+        <span class="n">xball</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">unitball</span><span class="p">()</span>
+        <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">CL</span><span class="p">,</span> <span class="n">xball</span><span class="p">)</span> <span class="o">+</span> <span class="n">xcent</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">clamp</span><span class="p">:</span>
+            <span class="c1"># clamp to finite og</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">og</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">x</span><span class="p">)))</span>
+            <span class="n">y</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">og</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">y</span><span class="p">)))</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">((</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="RRTStarInformed.rotation_to_world_frame"><a class="viewcode-back" href="../../autoapi/rrtplanner/rrt/index.html#rrtplanner.RRTStarInformed.rotation_to_world_frame">[docs]</a>    <span class="k">def</span> <span class="nf">rotation_to_world_frame</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">xstart</span><span class="p">,</span> <span class="n">xgoal</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;calculate the rotation matrix from the world-frame to the frame given</span>
+<span class="sd">        by the hyperellipsoid with focal points at xf1=xstart and xf2=xgoal. a unit</span>
+<span class="sd">        ball multiplied by this matrix will produce an oriented ellipsoid with those</span>
+<span class="sd">        focal points.&quot;&quot;&quot;</span>
+        <span class="n">a1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">atleast_2d</span><span class="p">((</span><span class="n">xgoal</span> <span class="o">-</span> <span class="n">xstart</span><span class="p">)</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">xgoal</span> <span class="o">-</span> <span class="n">xstart</span><span class="p">))</span>
+        <span class="n">M</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">outer</span><span class="p">(</span><span class="n">a1</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">atleast_2d</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">]))</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">U</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">V</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">svd</span><span class="p">(</span><span class="n">M</span><span class="p">)</span>
+        <span class="k">except</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">LinAlgError</span><span class="p">:</span>
+            <span class="c1"># handle SVD not converging</span>
+            <span class="n">U</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">V</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">svd</span><span class="p">(</span><span class="n">M</span><span class="p">,</span> <span class="n">full_matrices</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">U</span> <span class="o">@</span> <span class="n">np</span><span class="o">.</span><span class="n">diag</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">det</span><span class="p">(</span><span class="n">U</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">det</span><span class="p">(</span><span class="n">V</span><span class="p">)])</span> <span class="o">@</span> <span class="n">V</span><span class="o">.</span><span class="n">T</span></div>
+
+<div class="viewcode-block" id="RRTStarInformed.get_ellipse_xform"><a class="viewcode-back" href="../../autoapi/rrtplanner/rrt/index.html#rrtplanner.RRTStarInformed.get_ellipse_xform">[docs]</a>    <span class="k">def</span> <span class="nf">get_ellipse_xform</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">xstart</span><span class="p">,</span> <span class="n">xgoal</span><span class="p">,</span> <span class="n">cmax</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;transform vector in unit plane to ellipse plane&quot;&quot;&quot;</span>
+        <span class="c1"># rotation matrix</span>
+        <span class="n">C</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rotation_to_world_frame</span><span class="p">(</span><span class="n">xstart</span><span class="p">,</span> <span class="n">xgoal</span><span class="p">)</span>
+        <span class="c1"># scale by major axis r1, minor axis r2.</span>
+        <span class="n">r1</span> <span class="o">=</span> <span class="n">cmax</span> <span class="o">/</span> <span class="mi">2</span>
+        <span class="n">d2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">((</span><span class="n">xstart</span> <span class="o">-</span> <span class="n">xgoal</span><span class="p">)</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="p">(</span><span class="n">xstart</span> <span class="o">-</span> <span class="n">xgoal</span><span class="p">))</span>
+        <span class="n">r2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">cmax</span> <span class="o">*</span> <span class="n">cmax</span> <span class="o">-</span> <span class="n">d2</span><span class="p">))</span> <span class="o">/</span> <span class="mi">2</span>
+        <span class="n">L</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diag</span><span class="p">([</span><span class="n">r1</span><span class="p">,</span> <span class="n">r2</span><span class="p">])</span>
+        <span class="c1"># dot rotation with scale to get final matrix</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">C</span><span class="p">,</span> <span class="n">L</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="RRTStarInformed.least_cost"><a class="viewcode-back" href="../../autoapi/rrtplanner/rrt/index.html#rrtplanner.RRTStarInformed.least_cost">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">least_cost</span><span class="p">(</span><span class="n">vcosts</span><span class="p">,</span> <span class="n">vsoln</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">vsoln</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">vsoln</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">vcosts</span><span class="p">[</span><span class="n">vsoln</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">idx_cmin</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="n">vcosts</span><span class="p">[</span><span class="n">vsoln</span><span class="p">])</span>
+            <span class="k">return</span> <span class="n">vsoln</span><span class="p">[</span><span class="n">idx_cmin</span><span class="p">],</span> <span class="n">vcosts</span><span class="p">[</span><span class="n">vsoln</span><span class="p">[</span><span class="n">idx_cmin</span><span class="p">]]</span></div>
+
+<div class="viewcode-block" id="RRTStarInformed.rad2deg"><a class="viewcode-back" href="../../autoapi/rrtplanner/rrt/index.html#rrtplanner.RRTStarInformed.rad2deg">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">rad2deg</span><span class="p">(</span><span class="n">a</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">a</span> <span class="o">*</span> <span class="mi">180</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span></div>
+
+<div class="viewcode-block" id="RRTStarInformed.get_ellipse_for_plt"><a class="viewcode-back" href="../../autoapi/rrtplanner/rrt/index.html#rrtplanner.RRTStarInformed.get_ellipse_for_plt">[docs]</a>    <span class="k">def</span> <span class="nf">get_ellipse_for_plt</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">xstart</span><span class="p">,</span> <span class="n">xgoal</span><span class="p">,</span> <span class="n">cmax</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+        <span class="n">xcent</span> <span class="o">=</span> <span class="p">(</span><span class="n">xgoal</span> <span class="o">+</span> <span class="n">xstart</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span>
+        <span class="c1"># get the rotation</span>
+        <span class="n">CL</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_ellipse_xform</span><span class="p">(</span><span class="n">xstart</span><span class="p">,</span> <span class="n">xgoal</span><span class="p">,</span> <span class="n">cmax</span><span class="p">)</span>
+        <span class="c1"># apply the rotation to find major axis, minor axis, angle</span>
+        <span class="n">a</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">CL</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">]))</span>
+        <span class="n">b</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">CL</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]))</span>
+        <span class="n">majax</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+        <span class="n">minax</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">b</span><span class="p">)</span>
+        <span class="n">ang</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rad2deg</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arctan2</span><span class="p">((</span><span class="n">a</span><span class="p">)[</span><span class="mi">1</span><span class="p">],</span> <span class="p">(</span><span class="n">a</span><span class="p">)[</span><span class="mi">0</span><span class="p">]))</span>
+        <span class="k">return</span> <span class="n">xcent</span><span class="p">,</span> <span class="n">majax</span><span class="p">,</span> <span class="n">minax</span><span class="p">,</span> <span class="n">ang</span></div>
+
+<div class="viewcode-block" id="RRTStarInformed.plan"><a class="viewcode-back" href="../../autoapi/rrtplanner/rrt/index.html#rrtplanner.RRTStarInformed.plan">[docs]</a>    <span class="k">def</span> <span class="nf">plan</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">xstart</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">xgoal</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Compute a plan from `xstart` to `xgoal`. Using the RRT* Informed algorithm.</span>
+
+<span class="sd">        Keep in mind: if the cost function does not correspond to the Euclidean cost,</span>
+<span class="sd">        this algorithm may undersample the solution space -- therefore, for non R^2</span>
+<span class="sd">        distance cost functions, it is recommended to use the RRT* algorithm instead.</span>
+
+<span class="sd">        The plan is a tree, with the root at `xstart` and a leaf at `xgoal`. If xgoal</span>
+<span class="sd">        could not be connected to the tree, the leaf nearest to xgoal is considered the</span>
+<span class="sd">        &quot;goal&quot; leaf.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        xstart : np.ndarray</span>
+<span class="sd">            (2, ) start point</span>
+<span class="sd">        xgoal : np.ndarray</span>
+<span class="sd">            (2, ) goal point</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        Tuple[nx.DiGraph, int]</span>
+<span class="sd">            DiGraph of the tree, and the vertex of the goal leaf (if goal could be</span>
+<span class="sd">            reached) or the closest tree node.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">vsoln</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">sampled</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+        <span class="n">points</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">n</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">fill_value</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">not_a_point</span><span class="p">)</span>
+        <span class="n">vcosts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">n</span><span class="p">,),</span> <span class="n">fill_value</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">not_a_dist</span><span class="p">)</span>
+        <span class="n">parents</span><span class="p">,</span> <span class="n">children</span> <span class="o">=</span> <span class="p">{},</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">list</span><span class="p">)</span>
+        <span class="n">points</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">xstart</span>
+        <span class="n">vcosts</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">parents</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">i</span><span class="p">,</span> <span class="n">j</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">pbar</span><span class="p">:</span>
+            <span class="n">pbar</span> <span class="o">=</span> <span class="n">tqdm</span><span class="p">(</span><span class="n">total</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">n</span><span class="p">)</span>
+
+        <span class="k">while</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">n</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">pbar</span><span class="p">:</span>
+                <span class="n">pbar</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+            <span class="c1"># either sample from free or sample from ellipse depending on vsoln</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">vsoln</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">xnew</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample_all_free</span><span class="p">()</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">vbest</span><span class="p">,</span> <span class="n">cbest</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">least_cost</span><span class="p">(</span><span class="n">vcosts</span><span class="p">,</span> <span class="nb">list</span><span class="p">(</span><span class="n">vsoln</span><span class="p">))</span>
+                <span class="n">cbest</span> <span class="o">+=</span> <span class="n">r2norm</span><span class="p">(</span><span class="n">xgoal</span> <span class="o">-</span> <span class="n">points</span><span class="p">[</span><span class="n">vbest</span><span class="p">])</span>
+                <span class="n">xnew</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample_ellipse</span><span class="p">(</span><span class="n">xstart</span><span class="p">,</span> <span class="n">xgoal</span><span class="p">,</span> <span class="n">cbest</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">ellipses</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_ellipse_for_plt</span><span class="p">(</span><span class="n">xstart</span><span class="p">,</span> <span class="n">xgoal</span><span class="p">,</span> <span class="n">cbest</span><span class="p">)</span>
+
+            <span class="n">vnearest</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">near</span><span class="p">(</span><span class="n">points</span><span class="p">,</span> <span class="n">xnew</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">xnearest</span> <span class="o">=</span> <span class="n">points</span><span class="p">[</span><span class="n">vnearest</span><span class="p">]</span>
+
+            <span class="n">nocoll</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">collisionfree</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">og</span><span class="p">,</span> <span class="n">xnearest</span><span class="p">,</span> <span class="n">xnew</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">nocoll</span> <span class="ow">and</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">xnew</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">sampled</span> <span class="ow">and</span> <span class="n">j</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">n</span><span class="p">:</span>
+                <span class="n">sampled</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="n">xnew</span><span class="p">))</span>
+
+                <span class="c1"># check least cost path to xnew</span>
+                <span class="n">vbest</span> <span class="o">=</span> <span class="n">vnearest</span>
+                <span class="n">cbest</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cost</span><span class="p">(</span><span class="n">vcosts</span><span class="p">,</span> <span class="n">points</span><span class="p">,</span> <span class="n">vbest</span><span class="p">,</span> <span class="n">xnew</span><span class="p">)</span>
+                <span class="n">vnear</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">within</span><span class="p">(</span><span class="n">points</span><span class="p">,</span> <span class="n">xnew</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">r_rewire</span><span class="p">)</span>
+
+                <span class="k">for</span> <span class="n">vn</span> <span class="ow">in</span> <span class="n">vnear</span><span class="p">:</span>
+                    <span class="n">xn</span> <span class="o">=</span> <span class="n">points</span><span class="p">[</span><span class="n">vn</span><span class="p">]</span>
+                    <span class="n">cn</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cost</span><span class="p">(</span><span class="n">vcosts</span><span class="p">,</span> <span class="n">points</span><span class="p">,</span> <span class="n">vn</span><span class="p">,</span> <span class="n">xnew</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">cn</span> <span class="o">&lt;</span> <span class="n">cbest</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">collisionfree</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">og</span><span class="p">,</span> <span class="n">xn</span><span class="p">,</span> <span class="n">xnew</span><span class="p">):</span>
+                            <span class="n">vbest</span> <span class="o">=</span> <span class="n">vn</span>
+                            <span class="n">cbest</span> <span class="o">=</span> <span class="n">cn</span>
+
+                <span class="c1"># store new point</span>
+                <span class="n">vnew</span> <span class="o">=</span> <span class="n">j</span>
+                <span class="n">points</span><span class="p">[</span><span class="n">vnew</span><span class="p">]</span> <span class="o">=</span> <span class="n">xnew</span>
+                <span class="n">vcosts</span><span class="p">[</span><span class="n">vnew</span><span class="p">]</span> <span class="o">=</span> <span class="n">cbest</span>
+                <span class="c1"># store new edge</span>
+                <span class="n">parents</span><span class="p">[</span><span class="n">vnew</span><span class="p">]</span> <span class="o">=</span> <span class="n">vbest</span>
+                <span class="n">children</span><span class="p">[</span><span class="n">vbest</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">vnew</span><span class="p">)</span>
+
+                <span class="c1"># tree rewire</span>
+                <span class="k">for</span> <span class="n">vn</span> <span class="ow">in</span> <span class="n">vnear</span><span class="p">:</span>
+                    <span class="n">xn</span> <span class="o">=</span> <span class="n">points</span><span class="p">[</span><span class="n">vn</span><span class="p">]</span>
+                    <span class="n">cn</span> <span class="o">=</span> <span class="n">vcosts</span><span class="p">[</span><span class="n">vn</span><span class="p">]</span>
+                    <span class="n">cmaybe</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cost</span><span class="p">(</span><span class="n">vcosts</span><span class="p">,</span> <span class="n">points</span><span class="p">,</span> <span class="n">vn</span><span class="p">,</span> <span class="n">xnew</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">cmaybe</span> <span class="o">&lt;</span> <span class="n">cn</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">collisionfree</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">og</span><span class="p">,</span> <span class="n">xn</span><span class="p">,</span> <span class="n">xnew</span><span class="p">):</span>
+                            <span class="n">parent</span> <span class="o">=</span> <span class="n">parents</span><span class="p">[</span><span class="n">vn</span><span class="p">]</span>
+                            <span class="k">if</span> <span class="n">parent</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                                <span class="n">children</span><span class="p">[</span><span class="n">parent</span><span class="p">]</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">vn</span><span class="p">)</span>
+                                <span class="n">parents</span><span class="p">[</span><span class="n">vn</span><span class="p">]</span> <span class="o">=</span> <span class="n">vnew</span>
+                                <span class="n">vcosts</span><span class="p">[</span><span class="n">vn</span><span class="p">]</span> <span class="o">=</span> <span class="n">cmaybe</span>
+                <span class="c1"># check goal</span>
+                <span class="k">if</span> <span class="n">r2norm</span><span class="p">(</span><span class="n">xnew</span> <span class="o">-</span> <span class="n">xgoal</span><span class="p">)</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">r_goal</span><span class="p">:</span>
+                    <span class="n">vsoln</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">vnew</span><span class="p">)</span>
+
+                <span class="n">j</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="n">i</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="c1"># go to goal if possible</span>
+        <span class="n">vgoal</span><span class="p">,</span> <span class="n">children</span><span class="p">,</span> <span class="n">parents</span><span class="p">,</span> <span class="n">points</span><span class="p">,</span> <span class="n">vcosts</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">go2goal</span><span class="p">(</span>
+            <span class="n">vcosts</span><span class="p">,</span> <span class="n">points</span><span class="p">,</span> <span class="n">xgoal</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">children</span><span class="p">,</span> <span class="n">parents</span>
+        <span class="p">)</span>
+
+        <span class="c1"># build graph</span>
+        <span class="n">T</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">build_graph</span><span class="p">(</span><span class="n">vgoal</span><span class="p">,</span> <span class="n">points</span><span class="p">,</span> <span class="n">parents</span><span class="p">,</span> <span class="n">vcosts</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">T</span><span class="p">,</span> <span class="n">vgoal</span></div></div>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">oggen</span> <span class="kn">import</span> <span class="n">perlin_occupancygrid</span>
+    <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+    <span class="kn">from</span> <span class="nn">plots</span> <span class="kn">import</span> <span class="n">plot_og</span><span class="p">,</span> <span class="n">plot_rrt_lines</span><span class="p">,</span> <span class="n">plot_path</span><span class="p">,</span> <span class="n">plot_start_goal</span>
+
+    <span class="c1"># create occupancy Grid</span>
+    <span class="n">w</span><span class="p">,</span> <span class="n">h</span> <span class="o">=</span> <span class="mi">800</span><span class="p">,</span> <span class="mi">450</span>
+    <span class="n">og</span> <span class="o">=</span> <span class="n">perlin_occupancygrid</span><span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="n">h</span><span class="p">)</span>
+
+    <span class="c1"># create planner</span>
+    <span class="n">rrtplanner</span> <span class="o">=</span> <span class="n">RRTStarInformed</span><span class="p">(</span><span class="n">og</span><span class="p">,</span> <span class="n">n</span><span class="o">=</span><span class="mi">2000</span><span class="p">,</span> <span class="n">r_rewire</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span> <span class="n">r_goal</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
+    <span class="n">xstart</span> <span class="o">=</span> <span class="n">random_point_og</span><span class="p">(</span><span class="n">og</span><span class="p">)</span>
+    <span class="n">xgoal</span> <span class="o">=</span> <span class="n">random_point_og</span><span class="p">(</span><span class="n">og</span><span class="p">)</span>
+
+    <span class="n">T</span><span class="p">,</span> <span class="n">gv</span> <span class="o">=</span> <span class="n">rrtplanner</span><span class="o">.</span><span class="n">make</span><span class="p">(</span><span class="n">xstart</span><span class="p">,</span> <span class="n">xgoal</span><span class="p">)</span>
+    <span class="n">pathlines</span> <span class="o">=</span> <span class="n">rrtplanner</span><span class="o">.</span><span class="n">route2gv</span><span class="p">(</span><span class="n">T</span><span class="p">,</span> <span class="n">gv</span><span class="p">)</span>
+    <span class="n">pathlines</span> <span class="o">=</span> <span class="n">rrtplanner</span><span class="o">.</span><span class="n">path_points</span><span class="p">(</span><span class="n">T</span><span class="p">,</span> <span class="n">pathlines</span><span class="p">)</span>
+
+    <span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">16</span><span class="p">,</span> <span class="mi">9</span><span class="p">))</span>
+    <span class="n">ax</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="mi">111</span><span class="p">)</span>
+    <span class="n">plot_og</span><span class="p">(</span><span class="n">ax</span><span class="p">,</span> <span class="n">og</span><span class="p">)</span>
+    <span class="n">plot_start_goal</span><span class="p">(</span><span class="n">ax</span><span class="p">,</span> <span class="n">xstart</span><span class="p">,</span> <span class="n">xgoal</span><span class="p">)</span>
+    <span class="n">plot_rrt_lines</span><span class="p">(</span><span class="n">ax</span><span class="p">,</span> <span class="n">T</span><span class="p">,</span> <span class="n">color_costs</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">plot_path</span><span class="p">(</span><span class="n">ax</span><span class="p">,</span> <span class="n">pathlines</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Mike Sutherland.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

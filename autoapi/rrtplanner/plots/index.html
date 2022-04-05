@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>rrtplanner.plots &mdash; RRT Planner  documentation</title><link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/graphviz.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  <script id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+        <script src="../../../_static/jquery.js"></script>
+        <script src="../../../_static/underscore.js"></script>
+        <script src="../../../_static/doctools.js"></script>
+        <script src="../../../_static/language_data.js"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../../index.html" class="icon icon-home"> RRT Planner
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption"><span class="caption-text">Contents</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../getting-started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/rland93/rrtplanner">Git Repository</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../index.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">RRT Planner</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home"></a> &raquo;</li>
+      <li><code class="xref py py-mod docutils literal notranslate"><span class="pre">rrtplanner.plots</span></code></li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../../_sources/autoapi/rrtplanner/plots/index.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="section" id="module-rrtplanner.plots">
+<span id="rrtplanner-plots"></span><h1><a class="reference internal" href="#module-rrtplanner.plots" title="rrtplanner.plots"><code class="xref py py-mod docutils literal notranslate"><span class="pre">rrtplanner.plots</span></code></a><a class="headerlink" href="#module-rrtplanner.plots" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="module-contents">
+<h2>Module Contents<a class="headerlink" href="#module-contents" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="functions">
+<h3>Functions<a class="headerlink" href="#functions" title="Permalink to this headline">¶</a></h3>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#rrtplanner.plots.remove_axticks" title="rrtplanner.plots.remove_axticks"><code class="xref py py-obj docutils literal notranslate"><span class="pre">remove_axticks</span></code></a>(ax)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#rrtplanner.plots.plot_og" title="rrtplanner.plots.plot_og"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_og</span></code></a>(ax: matplotlib.axes.Axes, og: numpy.ndarray, cmap: str = ‘Greys’, vmin=0, vmax=1)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#rrtplanner.plots.plot_start_goal" title="rrtplanner.plots.plot_start_goal"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_start_goal</span></code></a>(ax, xstart, xgoal)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#rrtplanner.plots.plot_rrt_lines" title="rrtplanner.plots.plot_rrt_lines"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_rrt_lines</span></code></a>(ax, T, color_costs=True, cmap=’viridis’, color=’tan’, alpha=1.0)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#rrtplanner.plots.plot_rrt_points" title="rrtplanner.plots.plot_rrt_points"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_rrt_points</span></code></a>(ax, T)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#rrtplanner.plots.plot_ellipses" title="rrtplanner.plots.plot_ellipses"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_ellipses</span></code></a>(ax, ellipses, cmap=’RdPu’)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#rrtplanner.plots.plot_path" title="rrtplanner.plots.plot_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_path</span></code></a>(ax, pathlines: numpy.ndarray, zorder=10)</p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="attributes">
+<h3>Attributes<a class="headerlink" href="#attributes" title="Permalink to this headline">¶</a></h3>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#rrtplanner.plots.axs" title="rrtplanner.plots.axs"><code class="xref py py-obj docutils literal notranslate"><span class="pre">axs</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+<dl class="function">
+<dt id="rrtplanner.plots.remove_axticks">
+<code class="sig-prename descclassname">rrtplanner.plots.</code><code class="sig-name descname">remove_axticks</code><span class="sig-paren">(</span><em class="sig-param">ax</em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/rrtplanner/plots.html#remove_axticks"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#rrtplanner.plots.remove_axticks" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="rrtplanner.plots.plot_og">
+<code class="sig-prename descclassname">rrtplanner.plots.</code><code class="sig-name descname">plot_og</code><span class="sig-paren">(</span><em class="sig-param">ax: matplotlib.axes.Axes</em>, <em class="sig-param">og: numpy.ndarray</em>, <em class="sig-param">cmap: str = 'Greys'</em>, <em class="sig-param">vmin=0</em>, <em class="sig-param">vmax=1</em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/rrtplanner/plots.html#plot_og"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#rrtplanner.plots.plot_og" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="rrtplanner.plots.plot_start_goal">
+<code class="sig-prename descclassname">rrtplanner.plots.</code><code class="sig-name descname">plot_start_goal</code><span class="sig-paren">(</span><em class="sig-param">ax</em>, <em class="sig-param">xstart</em>, <em class="sig-param">xgoal</em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/rrtplanner/plots.html#plot_start_goal"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#rrtplanner.plots.plot_start_goal" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="rrtplanner.plots.plot_rrt_lines">
+<code class="sig-prename descclassname">rrtplanner.plots.</code><code class="sig-name descname">plot_rrt_lines</code><span class="sig-paren">(</span><em class="sig-param">ax</em>, <em class="sig-param">T</em>, <em class="sig-param">color_costs=True</em>, <em class="sig-param">cmap='viridis'</em>, <em class="sig-param">color='tan'</em>, <em class="sig-param">alpha=1.0</em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/rrtplanner/plots.html#plot_rrt_lines"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#rrtplanner.plots.plot_rrt_lines" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="rrtplanner.plots.plot_rrt_points">
+<code class="sig-prename descclassname">rrtplanner.plots.</code><code class="sig-name descname">plot_rrt_points</code><span class="sig-paren">(</span><em class="sig-param">ax</em>, <em class="sig-param">T</em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/rrtplanner/plots.html#plot_rrt_points"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#rrtplanner.plots.plot_rrt_points" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="rrtplanner.plots.plot_ellipses">
+<code class="sig-prename descclassname">rrtplanner.plots.</code><code class="sig-name descname">plot_ellipses</code><span class="sig-paren">(</span><em class="sig-param">ax</em>, <em class="sig-param">ellipses</em>, <em class="sig-param">cmap='RdPu'</em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/rrtplanner/plots.html#plot_ellipses"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#rrtplanner.plots.plot_ellipses" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="rrtplanner.plots.plot_path">
+<code class="sig-prename descclassname">rrtplanner.plots.</code><code class="sig-name descname">plot_path</code><span class="sig-paren">(</span><em class="sig-param">ax</em>, <em class="sig-param">pathlines: numpy.ndarray</em>, <em class="sig-param">zorder=10</em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/rrtplanner/plots.html#plot_path"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#rrtplanner.plots.plot_path" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="data">
+<dt id="rrtplanner.plots.axs">
+<code class="sig-prename descclassname">rrtplanner.plots.</code><code class="sig-name descname">axs</code><em class="property"> = []</em><a class="headerlink" href="#rrtplanner.plots.axs" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Mike Sutherland.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

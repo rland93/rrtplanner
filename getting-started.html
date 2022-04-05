@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Getting Started &mdash; RRT Planner  documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/language_data.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="RRTPlanner Documentation" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="index.html" class="icon icon-home"> RRT Planner
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption"><span class="caption-text">Contents</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Getting Started</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#installation">Installation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#how-to-plan">How to Plan</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/rland93/rrtplanner">Git Repository</a></li>
+<li class="toctree-l1"><a class="reference internal" href="autoapi/index.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">RRT Planner</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+      <li>Getting Started</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/getting-started.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="section" id="getting-started">
+<h1>Getting Started<a class="headerlink" href="#getting-started" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="installation">
+<h2>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h2>
+<p>Installation is done with <code class="docutils literal notranslate"><span class="pre">pip</span></code></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip install rrtplanner
+</pre></div>
+</div>
+</div>
+<div class="section" id="how-to-plan">
+<h2>How to Plan<a class="headerlink" href="#how-to-plan" title="Permalink to this headline">¶</a></h2>
+<p>Path Planning is the process of finding a viable path from one point to another in some configuration space. This package provides some example implementations of RRT, RRT*, and RRT*Informed planners. These planners can be used to plan in a two dimensional configuration space, with no differential constraints on the motion of the robot. This means that a path between two points is simply a straight line.</p>
+<p>Plans are computed by these objects:</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="autoapi/rrtplanner/index.html#rrtplanner.RRTStandard" title="rrtplanner.RRTStandard"><code class="xref py py-class docutils literal notranslate"><span class="pre">rrtplanner.RRTStandard</span></code></a></p></li>
+<li><p><a class="reference internal" href="autoapi/rrtplanner/index.html#rrtplanner.RRTStar" title="rrtplanner.RRTStar"><code class="xref py py-class docutils literal notranslate"><span class="pre">rrtplanner.RRTStar</span></code></a></p></li>
+<li><p><a class="reference internal" href="autoapi/rrtplanner/index.html#rrtplanner.RRTStarInformed" title="rrtplanner.RRTStarInformed"><code class="xref py py-class docutils literal notranslate"><span class="pre">rrtplanner.RRTStarInformed</span></code></a></p></li>
+</ul>
+<p>Plans are computed on an OccupancyGrid, which is a MxN array of integers. This package considers a value of 0 to be free space, and anything other than 0 to be an obstacle. We can create random, boolean arrays with the built-in <code class="docutils literal notranslate"><span class="pre">perlin_occupancygrid</span></code> function:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">rrtplanner</span> <span class="kn">import</span> <span class="n">perlin_occupancygrid</span>
+<span class="n">og</span> <span class="o">=</span> <span class="n">perlin_occupancygrid</span><span class="p">(</span><span class="mi">240</span><span class="p">,</span> <span class="mi">240</span><span class="p">,</span> <span class="mf">0.33</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This will create an occupancy grid (really, just an 400x400 array) of points, with blocks of 1 where obstacles are present and blocks of 0 that are free space.</p>
+<div class="admonition important">
+<p class="admonition-title">Important</p>
+<p>Using Perlin noise often generates good random obstacles. However, it sometimes creates an occupancygrid with free space that is split – from a given point, there is no guarantee that all free space is reachable if you are using the <code class="docutils literal notranslate"><span class="pre">perlin_occupancygrid</span></code> noise generator.</p>
+</div>
+<p>In real applications, occupancyGrids can be generated by e.g. a SLAM algorithm or pre-computed map.</p>
+<p>With our occupancy grid, we are ready to plan.</p>
+<p>First, we create the planner object. This object takes three important arguments: <code class="docutils literal notranslate"><span class="pre">og</span></code>, which is the occupancy grid over which we want to plan, <code class="docutils literal notranslate"><span class="pre">n</span></code> which is the number of <strong>attempted</strong> sample points, and <code class="docutils literal notranslate"><span class="pre">r_rewire</span></code>, which is the radius for which to rewire.</p>
+<p>As a general rule, we choose <code class="docutils literal notranslate"><span class="pre">n</span></code> appropriately, according to the amount of time we have to compute new plans vs the optimality of computed plans. When <code class="docutils literal notranslate"><span class="pre">n</span></code> is large, more samples are attempted, and so there are more opportunities to generate an optimal plan. When <code class="docutils literal notranslate"><span class="pre">n</span></code> is small, plan time is short, but plans are less optimal.</p>
+<blockquote>
+<div><p>We also want to choose <code class="docutils literal notranslate"><span class="pre">r_rewire</span></code> so that it is sized to the obstacle features. Very large values of <code class="docutils literal notranslate"><span class="pre">r_rewire</span></code> will result in the algorithm taking a long time to compute a plan, with little benefit, since obstacles block long straight-line paths. While very small values of <code class="docutils literal notranslate"><span class="pre">r_rewire</span></code> will result in the algorithm quickly finding a sub-optimal plan.</p>
+</div></blockquote>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">rrtplanner</span> <span class="kn">import</span> <span class="n">RRTStar</span><span class="p">,</span> <span class="n">random_point_og</span>
+<span class="n">n</span> <span class="o">=</span> <span class="mi">1200</span>
+<span class="n">r_rewire</span> <span class="o">=</span> <span class="mi">80</span>
+<span class="n">rrts</span> <span class="o">=</span> <span class="n">RRTStar</span><span class="p">(</span><span class="n">og</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">r_rewire</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Now, we can plan a path. We choose a start and a goal point randomly from the free space of the world, and call the <code class="docutils literal notranslate"><span class="pre">RRTStar</span></code>’s <code class="docutils literal notranslate"><span class="pre">plan</span></code> method.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">xstart</span> <span class="o">=</span> <span class="n">random_point_og</span><span class="p">(</span><span class="n">og</span><span class="p">)</span>
+<span class="n">xgoal</span> <span class="o">=</span> <span class="n">random_point_og</span><span class="p">(</span><span class="n">og</span><span class="p">)</span>
+<span class="n">T</span><span class="p">,</span> <span class="n">gv</span> <span class="o">=</span> <span class="n">rrts</span><span class="o">.</span><span class="n">plan</span><span class="p">(</span><span class="n">xstart</span><span class="p">,</span> <span class="n">xgoal</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The plan is computed, and we have two return values. The first is the tree itself, formatted as a <a class="reference external" href="https://networkx.org/documentation/stable/reference/classes/digraph.html">NetworkX DiGraph object</a> Points are stored in keys called <code class="docutils literal notranslate"><span class="pre">`pt</span></code> and edges have the attribute <code class="docutils literal notranslate"><span class="pre">cost</span></code>, which is the cost of the leaf node connected to that edge. The second return value is the vertex of the goal point on the tree.</p>
+<p>Once our tree is created, we traverse it to find a path from vertex 0 to the goal vertex, and subsequently find each point in the order of that traversal:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">path</span> <span class="o">=</span> <span class="n">rrts</span><span class="o">.</span><span class="n">route2gv</span><span class="p">(</span><span class="n">T</span><span class="p">,</span> <span class="n">gv</span><span class="p">)</span>
+<span class="n">path_pts</span> <span class="o">=</span> <span class="n">rrts</span><span class="o">.</span><span class="n">vertices_as_ndarray</span><span class="p">(</span><span class="n">T</span><span class="p">,</span> <span class="n">path</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Then, we have computed our path and it is stored in <code class="docutils literal notranslate"><span class="pre">path_pts</span></code>.</p>
+<p>This package includes a number of plotting functions (which use <a class="reference external" href="https://matplotlib.org/">matplotlib</a>) that can be used to visualize the 2-D world and plans in it.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">rrtplanner</span> <span class="kn">import</span> <span class="n">plot_rrt_lines</span><span class="p">,</span> <span class="n">plot_path</span><span class="p">,</span> <span class="n">plot_og</span><span class="p">,</span> <span class="n">plot_start_goal</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+
+<span class="c1"># create figure and ax.</span>
+<span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+<span class="n">ax</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">()</span>
+
+<span class="c1"># these functions alter ax in-place.</span>
+<span class="n">plot_og</span><span class="p">(</span><span class="n">ax</span><span class="p">,</span> <span class="n">og</span><span class="p">)</span>
+<span class="n">plot_start_goal</span><span class="p">(</span><span class="n">ax</span><span class="p">,</span> <span class="n">xstart</span><span class="p">,</span> <span class="n">xgoal</span><span class="p">)</span>
+<span class="n">plot_rrt_lines</span><span class="p">(</span><span class="n">ax</span><span class="p">,</span> <span class="n">T</span><span class="p">)</span>
+<span class="n">plot_path</span><span class="p">(</span><span class="n">ax</span><span class="p">,</span> <span class="n">path_pts</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>We see the results of our plan. Because points and obstacles are generated randomly when you run this script, your result should bear a superficial resemblance to the figure below:</p>
+<img alt="_images/getting-started-plan.png" src="_images/getting-started-plan.png" />
+<p>The full code used to generate this figure is shown below:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">rrtplanner</span> <span class="kn">import</span> <span class="n">perlin_occupancygrid</span>
+
+<span class="n">og</span> <span class="o">=</span> <span class="n">perlin_occupancygrid</span><span class="p">(</span><span class="mi">240</span><span class="p">,</span> <span class="mi">240</span><span class="p">,</span> <span class="mf">0.33</span><span class="p">)</span>
+<span class="kn">from</span> <span class="nn">rrtplanner</span> <span class="kn">import</span> <span class="n">RRTStar</span><span class="p">,</span> <span class="n">random_point_og</span>
+<span class="n">n</span> <span class="o">=</span> <span class="mi">1200</span>
+<span class="n">r_rewire</span> <span class="o">=</span> <span class="mi">80</span>  <span class="c1"># large enough for our 400x400 world</span>
+<span class="n">rrts</span> <span class="o">=</span> <span class="n">RRTStar</span><span class="p">(</span><span class="n">og</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">r_rewire</span><span class="p">)</span>
+
+<span class="n">xstart</span> <span class="o">=</span> <span class="n">random_point_og</span><span class="p">(</span><span class="n">og</span><span class="p">)</span>
+<span class="n">xgoal</span> <span class="o">=</span> <span class="n">random_point_og</span><span class="p">(</span><span class="n">og</span><span class="p">)</span>
+
+<span class="n">T</span><span class="p">,</span> <span class="n">gv</span> <span class="o">=</span> <span class="n">rrts</span><span class="o">.</span><span class="n">plan</span><span class="p">(</span><span class="n">xstart</span><span class="p">,</span> <span class="n">xgoal</span><span class="p">)</span>
+
+<span class="n">path</span> <span class="o">=</span> <span class="n">rrts</span><span class="o">.</span><span class="n">route2gv</span><span class="p">(</span><span class="n">T</span><span class="p">,</span> <span class="n">gv</span><span class="p">)</span>
+<span class="n">path_pts</span> <span class="o">=</span> <span class="n">rrts</span><span class="o">.</span><span class="n">vertices_as_ndarray</span><span class="p">(</span><span class="n">T</span><span class="p">,</span> <span class="n">path</span><span class="p">)</span>
+
+<span class="kn">from</span> <span class="nn">rrtplanner</span> <span class="kn">import</span> <span class="n">plot_rrt_lines</span><span class="p">,</span> <span class="n">plot_path</span><span class="p">,</span> <span class="n">plot_og</span><span class="p">,</span> <span class="n">plot_start_goal</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+
+<span class="c1"># create figure and ax.</span>
+<span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+<span class="n">ax</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">()</span>
+
+<span class="c1"># these functions alter ax in-place.</span>
+<span class="n">plot_og</span><span class="p">(</span><span class="n">ax</span><span class="p">,</span> <span class="n">og</span><span class="p">)</span>
+<span class="n">plot_start_goal</span><span class="p">(</span><span class="n">ax</span><span class="p">,</span> <span class="n">xstart</span><span class="p">,</span> <span class="n">xgoal</span><span class="p">)</span>
+<span class="n">plot_rrt_lines</span><span class="p">(</span><span class="n">ax</span><span class="p">,</span> <span class="n">T</span><span class="p">)</span>
+<span class="n">plot_path</span><span class="p">(</span><span class="n">ax</span><span class="p">,</span> <span class="n">path_pts</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="index.html" class="btn btn-neutral float-left" title="RRTPlanner Documentation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Mike Sutherland.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

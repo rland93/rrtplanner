@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>rrtplanner.anim &mdash; RRT Planner  documentation</title><link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/graphviz.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script src="../../_static/language_data.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../index.html" class="icon icon-home"> RRT Planner
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption"><span class="caption-text">Contents</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../getting-started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/rland93/rrtplanner">Git Repository</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../autoapi/index.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">RRT Planner</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+      <li>rrtplanner.anim</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for rrtplanner.anim</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">matplotlib.collections</span> <span class="kn">import</span> <span class="n">LineCollection</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+<span class="kn">from</span> <span class="nn">matplotlib.animation</span> <span class="kn">import</span> <span class="n">FuncAnimation</span>
+<span class="kn">from</span> <span class="nn">matplotlib.patches</span> <span class="kn">import</span> <span class="n">Circle</span>
+<span class="kn">from</span> <span class="nn">tqdm</span> <span class="kn">import</span> <span class="n">tqdm</span>
+<span class="kn">from</span> <span class="nn">scipy.ndimage</span> <span class="kn">import</span> <span class="n">binary_dilation</span>
+
+<span class="kn">from</span> <span class="nn">.rrt</span> <span class="kn">import</span> <span class="n">random_point_og</span><span class="p">,</span> <span class="n">RRT</span>
+
+
+<span class="n">DEFAULT_APPEARANCE</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;tree_color&quot;</span><span class="p">:</span> <span class="s2">&quot;slategrey&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;tree_alpha&quot;</span><span class="p">:</span> <span class="mf">0.2</span><span class="p">,</span>
+    <span class="s2">&quot;og_cmap&quot;</span><span class="p">:</span> <span class="s2">&quot;gist_gray_r&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;goal_marker&quot;</span><span class="p">:</span> <span class="s2">&quot;*&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;goal_color&quot;</span><span class="p">:</span> <span class="s2">&quot;seagreen&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;goal_circ_color&quot;</span><span class="p">:</span> <span class="s2">&quot;seagreen&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;start_marker&quot;</span><span class="p">:</span> <span class="s2">&quot;o&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;start_color&quot;</span><span class="p">:</span> <span class="s2">&quot;red&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;path_color&quot;</span><span class="p">:</span> <span class="s2">&quot;blue&quot;</span><span class="p">,</span>
+<span class="p">}</span>
+
+
+<div class="viewcode-block" id="DynamicEnvironmentAnimation"><a class="viewcode-back" href="../../autoapi/rrtplanner/index.html#rrtplanner.anim.DynamicEnvironmentAnimation">[docs]</a><span class="k">class</span> <span class="nc">DynamicEnvironmentAnimation</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">movespeed</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+        <span class="n">r_within_goal</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+        <span class="n">rrtobj</span><span class="p">:</span> <span class="n">RRT</span><span class="p">,</span>
+        <span class="n">appearance</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="n">DEFAULT_APPEARANCE</span><span class="p">,</span>
+        <span class="n">buffer_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">movespeed</span> <span class="o">=</span> <span class="n">movespeed</span>
+        <span class="c1"># radius within which we have &quot;found&quot; the goal</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">r_within_goal</span> <span class="o">=</span> <span class="n">r_within_goal</span>
+        <span class="c1"># RRT object. can be RRT star, informed, etc. Must have `make` method</span>
+        <span class="c1"># which can take a start and goal and return a tree and a goal vector</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rrtobj</span> <span class="o">=</span> <span class="n">rrtobj</span>
+        <span class="c1"># size of the &quot;buffer&quot; around obstacles. this is to avoid getting stuck</span>
+        <span class="c1"># in the obstacles. if the environment changes quickly, or if velocity is</span>
+        <span class="c1"># large, this should be a larger value. But setting a very large value</span>
+        <span class="c1"># will prevent optimal paths from being found.</span>
+        <span class="k">if</span> <span class="n">buffer_size</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">buffer_size</span> <span class="o">=</span> <span class="n">buffer_size</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">buffer_size</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">movespeed</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">appearance</span> <span class="o">=</span> <span class="n">appearance</span>
+
+<div class="viewcode-block" id="DynamicEnvironmentAnimation.clamp"><a class="viewcode-back" href="../../autoapi/rrtplanner/index.html#rrtplanner.anim.DynamicEnvironmentAnimation.clamp">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">clamp</span><span class="p">(</span><span class="n">xy</span><span class="p">,</span> <span class="n">shape</span><span class="p">):</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="n">xy</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span><span class="p">))</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="n">xy</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">])</span></div>
+
+<div class="viewcode-block" id="DynamicEnvironmentAnimation.simulate_dynamic_goals"><a class="viewcode-back" href="../../autoapi/rrtplanner/index.html#rrtplanner.anim.DynamicEnvironmentAnimation.simulate_dynamic_goals">[docs]</a>    <span class="k">def</span> <span class="nf">simulate_dynamic_goals</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">og_3d</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="n">frames</span> <span class="o">=</span> <span class="n">og_3d</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">xstart</span> <span class="o">=</span> <span class="n">random_point_og</span><span class="p">(</span><span class="n">og_3d</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="n">xgoal</span> <span class="o">=</span> <span class="n">random_point_og</span><span class="p">(</span><span class="n">og_3d</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="n">current_position</span> <span class="o">=</span> <span class="n">xstart</span>
+
+        <span class="n">goals</span><span class="p">,</span> <span class="n">positions</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="n">frames</span><span class="p">,</span> <span class="mi">2</span><span class="p">)),</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="n">frames</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
+        <span class="n">paths</span><span class="p">,</span> <span class="n">trees</span> <span class="o">=</span> <span class="p">[],</span> <span class="p">[]</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Simulating Dynamic Mission...&quot;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">fi</span> <span class="ow">in</span> <span class="n">tqdm</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">frames</span><span class="p">),</span> <span class="n">desc</span><span class="o">=</span><span class="s2">&quot;frames&quot;</span><span class="p">):</span>
+            <span class="n">og</span> <span class="o">=</span> <span class="n">og_3d</span><span class="p">[</span><span class="n">fi</span><span class="p">]</span>
+            <span class="c1"># if we are at the goal, get a new goal</span>
+            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">current_position</span> <span class="o">-</span> <span class="n">xgoal</span><span class="p">)</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">r_within_goal</span><span class="p">:</span>
+                <span class="n">xgoal</span> <span class="o">=</span> <span class="n">random_point_og</span><span class="p">(</span><span class="n">og</span><span class="p">)</span>
+            <span class="n">current_position</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">clamp</span><span class="p">(</span><span class="n">current_position</span><span class="p">,</span> <span class="n">og</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+
+            <span class="c1"># ok so we kinda want to avoid getting stuck in the obstacles so</span>
+            <span class="c1"># we&#39;ll do a binary dilation to get a bit of a buffer around objects</span>
+            <span class="c1"># before computing the plan, but we remove only the buffer near us.</span>
+            <span class="n">bsize</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">movespeed</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span>
+            <span class="n">og_dilated</span> <span class="o">=</span> <span class="n">binary_dilation</span><span class="p">(</span><span class="n">og</span><span class="p">,</span> <span class="n">iterations</span><span class="o">=</span><span class="n">bsize</span><span class="p">)</span>
+            <span class="n">buffer_reg</span> <span class="o">=</span> <span class="n">og_dilated</span> <span class="o">-</span> <span class="n">og</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">bsize</span> <span class="o">*</span> <span class="mi">2</span><span class="p">):</span>
+                <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">bsize</span> <span class="o">*</span> <span class="mi">2</span><span class="p">):</span>
+                    <span class="n">hole</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">clamp</span><span class="p">(</span><span class="n">current_position</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]),</span> <span class="n">og</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+                    <span class="c1"># set as free</span>
+                    <span class="n">buffer_reg</span><span class="p">[</span><span class="n">hole</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">hole</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">og</span> <span class="o">=</span> <span class="n">og</span> <span class="o">|</span> <span class="n">buffer_reg</span>
+            <span class="k">if</span> <span class="n">og</span><span class="p">[</span><span class="n">current_position</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">current_position</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">in_obs</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">in_obs</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">rrtobj</span><span class="o">.</span><span class="n">set_og</span><span class="p">(</span><span class="n">og</span><span class="p">)</span>
+            <span class="n">T</span><span class="p">,</span> <span class="n">gv</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rrtobj</span><span class="o">.</span><span class="n">make</span><span class="p">(</span><span class="n">current_position</span><span class="p">,</span> <span class="n">xgoal</span><span class="p">)</span>
+            <span class="n">path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rrtobj</span><span class="o">.</span><span class="n">path_points</span><span class="p">(</span><span class="n">T</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">rrtobj</span><span class="o">.</span><span class="n">route2gv</span><span class="p">(</span><span class="n">T</span><span class="p">,</span> <span class="n">gv</span><span class="p">))</span>
+
+            <span class="c1"># populate lists</span>
+            <span class="n">goals</span><span class="p">[</span><span class="n">fi</span><span class="p">]</span> <span class="o">=</span> <span class="n">xgoal</span>
+            <span class="n">positions</span><span class="p">[</span><span class="n">fi</span><span class="p">]</span> <span class="o">=</span> <span class="n">current_position</span>
+            <span class="n">paths</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+            <span class="n">tree</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">e1</span><span class="p">,</span> <span class="n">e2</span> <span class="ow">in</span> <span class="n">T</span><span class="o">.</span><span class="n">edges</span><span class="p">:</span>
+                <span class="n">p1</span><span class="p">,</span> <span class="n">p2</span> <span class="o">=</span> <span class="n">T</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="n">e1</span><span class="p">][</span><span class="s2">&quot;pt&quot;</span><span class="p">],</span> <span class="n">T</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="n">e2</span><span class="p">][</span><span class="s2">&quot;pt&quot;</span><span class="p">]</span>
+                <span class="n">tree</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">p1</span><span class="p">,</span> <span class="n">p2</span><span class="p">])</span>
+            <span class="n">trees</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">tree</span><span class="p">))</span>
+
+            <span class="k">if</span> <span class="n">path</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="mi">0</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">in_obs</span><span class="p">:</span>
+                <span class="c1"># follow current plan</span>
+                <span class="n">v</span> <span class="o">=</span> <span class="n">path</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="p">:]</span> <span class="o">-</span> <span class="n">path</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="p">:]</span>
+                <span class="n">angle</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arctan2</span><span class="p">(</span><span class="n">v</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">v</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                <span class="c1"># update simulation</span>
+                <span class="n">current_position</span> <span class="o">+=</span> <span class="n">np</span><span class="o">.</span><span class="n">int64</span><span class="p">(</span>
+                    <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">angle</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">angle</span><span class="p">)])</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">movespeed</span>
+                <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">goals</span><span class="p">,</span> <span class="n">positions</span><span class="p">,</span> <span class="n">paths</span><span class="p">,</span> <span class="n">trees</span></div>
+
+<div class="viewcode-block" id="DynamicEnvironmentAnimation.animate"><a class="viewcode-back" href="../../autoapi/rrtplanner/index.html#rrtplanner.anim.DynamicEnvironmentAnimation.animate">[docs]</a>    <span class="k">def</span> <span class="nf">animate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">goals</span><span class="p">,</span> <span class="n">positions</span><span class="p">,</span> <span class="n">paths</span><span class="p">,</span> <span class="n">trees</span><span class="p">,</span> <span class="n">og_3d</span><span class="p">):</span>
+        <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">()</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">og_3d</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">og_3d</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_aspect</span><span class="p">(</span><span class="s2">&quot;equal&quot;</span><span class="p">)</span>
+
+        <span class="n">pathlc</span> <span class="o">=</span> <span class="n">LineCollection</span><span class="p">(</span>
+            <span class="p">[],</span> <span class="n">color</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">appearance</span><span class="p">[</span><span class="s2">&quot;path_color&quot;</span><span class="p">],</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mi">2</span>
+        <span class="p">)</span>
+        <span class="n">treelc</span> <span class="o">=</span> <span class="n">LineCollection</span><span class="p">(</span>
+            <span class="p">[],</span>
+            <span class="n">color</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">appearance</span><span class="p">[</span><span class="s2">&quot;tree_color&quot;</span><span class="p">],</span>
+            <span class="n">zorder</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+            <span class="n">alpha</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">appearance</span><span class="p">[</span><span class="s2">&quot;tree_alpha&quot;</span><span class="p">],</span>
+        <span class="p">)</span>
+        <span class="n">im</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span>
+            <span class="n">og_3d</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">T</span><span class="p">,</span>
+            <span class="n">cmap</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">appearance</span><span class="p">[</span><span class="s2">&quot;og_cmap&quot;</span><span class="p">],</span>
+            <span class="n">vmin</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+            <span class="n">vmax</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+            <span class="n">interpolation</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="n">goal_sc</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span>
+            <span class="p">[],</span>
+            <span class="p">[],</span>
+            <span class="n">marker</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">appearance</span><span class="p">[</span><span class="s2">&quot;goal_marker&quot;</span><span class="p">],</span>
+            <span class="n">color</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">appearance</span><span class="p">[</span><span class="s2">&quot;goal_color&quot;</span><span class="p">],</span>
+            <span class="n">s</span><span class="o">=</span><span class="mi">40</span><span class="p">,</span>
+            <span class="n">zorder</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">goalcircle</span> <span class="o">=</span> <span class="n">Circle</span><span class="p">(</span>
+            <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+            <span class="n">radius</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">r_within_goal</span><span class="p">,</span>
+            <span class="n">fill</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">ec</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">appearance</span><span class="p">[</span><span class="s2">&quot;goal_circ_color&quot;</span><span class="p">],</span>
+            <span class="n">zorder</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">start_sc</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span>
+            <span class="p">[],</span>
+            <span class="p">[],</span>
+            <span class="n">marker</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">appearance</span><span class="p">[</span><span class="s2">&quot;start_marker&quot;</span><span class="p">],</span>
+            <span class="n">color</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">appearance</span><span class="p">[</span><span class="s2">&quot;start_color&quot;</span><span class="p">],</span>
+            <span class="n">s</span><span class="o">=</span><span class="mi">40</span><span class="p">,</span>
+            <span class="n">zorder</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="k">def</span> <span class="nf">init</span><span class="p">():</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">add_collection</span><span class="p">(</span><span class="n">pathlc</span><span class="p">)</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">add_collection</span><span class="p">(</span><span class="n">treelc</span><span class="p">)</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">add_artist</span><span class="p">(</span><span class="n">goalcircle</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">im</span><span class="p">,</span> <span class="n">pathlc</span><span class="p">,</span> <span class="n">treelc</span><span class="p">,</span> <span class="n">goal_sc</span><span class="p">,</span> <span class="n">goalcircle</span><span class="p">,</span> <span class="n">start_sc</span>
+
+        <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="n">i</span><span class="p">):</span>
+            <span class="n">pathlc</span><span class="o">.</span><span class="n">set_segments</span><span class="p">(</span><span class="n">paths</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+            <span class="n">treelc</span><span class="o">.</span><span class="n">set_segments</span><span class="p">(</span><span class="n">trees</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+            <span class="n">im</span><span class="o">.</span><span class="n">set_data</span><span class="p">(</span><span class="n">og_3d</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">T</span><span class="p">)</span>
+            <span class="n">goal_sc</span><span class="o">.</span><span class="n">set_offsets</span><span class="p">([</span><span class="n">goals</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">goals</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">1</span><span class="p">]])</span>
+            <span class="n">goalcircle</span><span class="o">.</span><span class="n">center</span> <span class="o">=</span> <span class="n">goals</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="n">start_sc</span><span class="o">.</span><span class="n">set_offsets</span><span class="p">([</span><span class="n">positions</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">positions</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">1</span><span class="p">]])</span>
+            <span class="k">return</span> <span class="n">im</span><span class="p">,</span> <span class="n">pathlc</span><span class="p">,</span> <span class="n">treelc</span><span class="p">,</span> <span class="n">goal_sc</span><span class="p">,</span> <span class="n">goalcircle</span><span class="p">,</span> <span class="n">start_sc</span>
+
+        <span class="n">anim</span> <span class="o">=</span> <span class="n">FuncAnimation</span><span class="p">(</span>
+            <span class="n">fig</span><span class="p">,</span>
+            <span class="n">update</span><span class="p">,</span>
+            <span class="n">init_func</span><span class="o">=</span><span class="n">init</span><span class="p">,</span>
+            <span class="n">frames</span><span class="o">=</span><span class="n">goals</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+            <span class="n">interval</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span>
+            <span class="n">blit</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">anim</span></div>
+
+<div class="viewcode-block" id="DynamicEnvironmentAnimation.make_animation"><a class="viewcode-back" href="../../autoapi/rrtplanner/index.html#rrtplanner.anim.DynamicEnvironmentAnimation.make_animation">[docs]</a>    <span class="k">def</span> <span class="nf">make_animation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">og_3d</span><span class="p">):</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">simulate_dynamic_goals</span><span class="p">(</span><span class="n">og_3d</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">animate</span><span class="p">(</span><span class="o">*</span><span class="n">results</span><span class="p">,</span> <span class="n">og_3d</span><span class="p">)</span></div></div>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">rrt</span>
+    <span class="kn">from</span> <span class="nn">oggen</span> <span class="kn">import</span> <span class="n">perlin_occupancygrid</span>
+
+    <span class="n">w</span><span class="p">,</span> <span class="n">h</span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">100</span>
+    <span class="n">frames</span> <span class="o">=</span> <span class="mi">200</span>
+    <span class="n">og_3d</span> <span class="o">=</span> <span class="n">perlin_occupancygrid</span><span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="n">h</span><span class="p">,</span> <span class="mf">0.33</span><span class="p">,</span> <span class="n">frames</span><span class="p">)</span>
+    <span class="n">rrts</span> <span class="o">=</span> <span class="n">rrt</span><span class="o">.</span><span class="n">RRTStarInformed</span><span class="p">(</span><span class="n">og_3d</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">n</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span> <span class="n">r_rewire</span><span class="o">=</span><span class="mi">25</span><span class="p">,</span> <span class="n">r_goal</span><span class="o">=</span><span class="mf">12.5</span><span class="p">,</span> <span class="n">pbar</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+    <span class="n">dyn_env_anim</span> <span class="o">=</span> <span class="n">DynamicEnvironmentAnimation</span><span class="p">(</span><span class="mf">7.0</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">,</span> <span class="n">rrts</span><span class="p">)</span>
+    <span class="n">anim</span> <span class="o">=</span> <span class="n">dyn_env_anim</span><span class="o">.</span><span class="n">make_animation</span><span class="p">(</span><span class="n">og_3d</span><span class="p">)</span>
+    <span class="c1"># anim.save(&quot;animation.mp4&quot;, fps=30, dpi=300)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Mike Sutherland.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,1870 @@
+:py:mod:`rrtplanner`
+====================
+
+.. py:module:: rrtplanner
+
+.. autoapi-nested-parse::
+
+   
+   Top-level package for rrtplanner.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+
+Submodules
+----------
+.. toctree::
+   :titlesonly:
+   :maxdepth: 1
+
+   anim/index.rst
+   oggen/index.rst
+   plots/index.rst
+   rrt/index.rst
+
+
+Package Contents
+----------------
+
+Classes
+~~~~~~~
+
+.. autoapisummary::
+
+   rrtplanner.RRT
+   rrtplanner.RRTStandard
+   rrtplanner.RRTStar
+   rrtplanner.RRTStarInformed
+   rrtplanner.RRT
+   rrtplanner.DynamicEnvironmentAnimation
+
+
+
+Functions
+~~~~~~~~~
+
+.. autoapisummary::
+
+   rrtplanner.r2norm
+   rrtplanner.random_point_og
+   rrtplanner.random_point_og
+   rrtplanner.perlin_occupancygrid
+   rrtplanner.remove_axticks
+   rrtplanner.plot_og
+   rrtplanner.plot_start_goal
+   rrtplanner.plot_rrt_lines
+   rrtplanner.plot_rrt_points
+   rrtplanner.plot_ellipses
+   rrtplanner.plot_path
+
+
+
+Attributes
+~~~~~~~~~~
+
+.. autoapisummary::
+
+   rrtplanner.__author__
+   rrtplanner.__email__
+   rrtplanner.__version__
+   rrtplanner.og
+   rrtplanner.DEFAULT_APPEARANCE
+   rrtplanner.frames
+   rrtplanner.fig
+   rrtplanner.axs
+
+
+.. py:data:: __author__
+   :annotation: = Mike Sutherland
+
+   
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:data:: __email__
+   :annotation: = msutherl@uci.edu
+
+   
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:data:: __version__
+   :annotation: = 0.1.0
+
+   
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:function:: r2norm(x)
+
+   
+   compute 2-norm of a vector
+
+
+   :Parameters:
+
+       **x** : np.ndarray
+           shape (2, ) array
+
+   :Returns:
+
+       float
+           2-norm of x
+
+
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:function:: random_point_og(og: numpy.ndarray) -> numpy.ndarray
+
+   
+   Get a random point in free space from the occupancyGrid.
+
+
+   :Parameters:
+
+       **og** : np.ndarray
+           occupancyGrid. 1 is obstacle, 0 is free space.
+
+   :Returns:
+
+       np.ndarray
+           randomly-sampled point
+
+
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:class:: RRT(og: numpy.ndarray, n: int, costfn: callable = None, pbar: bool = True)
+
+   Bases: :py:obj:`object`
+
+   
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+   .. py:method:: route2gv(self, T: networkx.DiGraph, gv) -> List[int]
+
+      
+      Returns a list of vertices on `T` that are the shortest path from the root of
+      `T` to the node `gv`. This is a wrapper of `nx.shortest_path`.
+
+      see also, `vertices_as_ndarray` method
+
+      :Parameters:
+
+          **T** : nx.DiGraph
+              The RRT DiGraph object, returned by rrt.make()
+
+          **gv** : int
+              vertex of the goal on `T`.
+
+      :Returns:
+
+          List[int]
+              ordered list of vertices on `T`. Iterating through this list will give the
+              vertices of the tree in order from the root to `gv`.
+
+
+
+
+
+
+
+
+
+
+
+
+
+      ..
+          !! processed by numpydoc !!
+
+   .. py:method:: vertices_as_ndarray(self, T: networkx.DiGraph, path: list) -> numpy.ndarray
+
+      
+      Helper method for obtaining an ordered list of vertices on `T` as an (M x 2)
+      array.
+
+
+      :Parameters:
+
+          **T** : nx.DiGraph
+              The RRT DiGraph object, returned by rrt.make()
+
+          **path** : list
+              List of vertices on the RRT DiGraph object
+
+      :Returns:
+
+          np.ndarray
+              (M x 2) array of points. M is the number of vertices in `T`.
+
+
+
+
+
+
+
+
+
+
+
+
+
+      ..
+          !! processed by numpydoc !!
+
+   .. py:method:: near(points: numpy.ndarray, x: numpy.ndarray) -> numpy.ndarray
+      :staticmethod:
+
+      
+      Obtain all points in `points` that are near `x`, sorted in ascending order of
+      distance.
+
+
+      :Parameters:
+
+          **points** : np.ndarray
+              (M x 2) array of points
+
+          **x** : np.ndarray
+              (2, ) array, point to find near
+
+      :Returns:
+
+          np.ndarray
+              (M x 2) sorted array of points)
+
+
+
+
+
+
+
+
+
+
+
+
+
+      ..
+          !! processed by numpydoc !!
+
+   .. py:method:: within(points: numpy.ndarray, x: numpy.ndarray, r: float) -> numpy.ndarray
+      :staticmethod:
+
+      
+      Obtain un-ordered array of points that are within `r` of the point `x`.
+
+
+      :Parameters:
+
+          **points** : np.ndarray
+              (M x 2) array of points
+
+          **x** : np.ndarray
+              (2, ) array, point to find near
+
+          **r** : float
+              radius to search within
+
+      :Returns:
+
+          np.ndarray
+              (? x 2) array of points within `r` of `x`
+
+
+
+
+
+
+
+
+
+
+
+
+
+      ..
+          !! processed by numpydoc !!
+
+   .. py:method:: collisionfree(og, a, b) -> bool
+      :staticmethod:
+
+      
+      Check occupancyGrid for collisions between points `a` and `b`.
+
+
+      :Parameters:
+
+          **og** : np.ndarray
+              the occupancyGrid where 0 is free space. Anything other than 0 is treated as an obstacle.
+
+          **a** : np.ndarray
+              (2, ) array of integer coordinates point a
+
+          **b** : np.ndarray
+              (2, ) array of integer coordinates point b
+
+      :Returns:
+
+          bool
+              whether or not there is a collision between the two points
+
+
+
+
+
+
+
+
+
+
+
+
+
+      ..
+          !! processed by numpydoc !!
+
+   .. py:method:: sample_all_free(self)
+
+      
+      Sample uniformly from free space in this object's occupancy grid.
+
+
+
+      :Returns:
+
+          np.ndarray
+              (2, ) array of a point in free space of occupancy grid.
+
+
+
+
+
+
+
+
+
+
+
+
+
+      ..
+          !! processed by numpydoc !!
+
+   .. py:method:: plan(self, xstart: numpy.ndarray, xgoal: numpy.ndarray)
+      :abstractmethod:
+
+      
+      Compute a plan from `xstart` to `xgoal`. Raises an exception if called on the
+      base class.
+
+
+      :Parameters:
+
+          **xstart** : np.ndarray
+              starting point
+
+          **xgoal** : np.ndarray
+              goal point
+
+
+
+
+
+      :Raises:
+
+          NotImplementedError
+              if called on the base class
+
+
+
+
+
+
+
+
+
+      ..
+          !! processed by numpydoc !!
+
+   .. py:method:: set_og(self, og_new: numpy.ndarray)
+
+      
+      Set a new occupancy grid. This method also updates free space in the passed
+      occupancy grid.
+
+
+      :Parameters:
+
+          **og_new** : np.ndarray
+              the new occupancy grid
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+      ..
+          !! processed by numpydoc !!
+
+   .. py:method:: set_n(self, n: int)
+
+      
+      Update the number of attempted sample points, `n`.
+
+
+      :Parameters:
+
+          **n** : int
+              new number of sample points attempted when calling plan() from this object.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+      ..
+          !! processed by numpydoc !!
+
+   .. py:method:: go2goal(self, vcosts, points, xgoal, j, children, parents)
+
+      
+      Attempt to find a path from an existing point on the tree to the goal. This will
+      update `vcosts`, `points`, `children`, and `parents` if a path is found, and
+      return a vertex corresponding to the goal. If no path can be computed from the
+      tree to the goal, the nearest vertex to the goal is selected.
+
+
+      :Parameters:
+
+          **vcosts** : np.ndarray
+              (M x 1) array of costs to vertices)
+
+          **points** : np.ndarray
+              (Mx2) array of points
+
+          **xgoal** : np.ndarray
+              (2, ) array of goal point
+
+          **j** : int
+              counter for the "current" vertex's index
+
+          **children** : dict
+              dict of children of vertices
+
+          **parents** : dict
+              dict of parents of children
+
+      :Returns:
+
+          tuple (int, dict, dict, np.ndarray, np.ndarray)
+              tuple containing (vgoal, children, parents, points, vcosts)
+
+
+
+
+
+
+
+
+
+
+
+
+
+      ..
+          !! processed by numpydoc !!
+
+   .. py:method:: build_graph(self, vgoal, points, parents, vcosts)
+
+      
+      Build the networkx DiGraph object from the points, parents dict, costs dict.
+
+
+      :Parameters:
+
+          **vgoal** : int
+              index of the goal vertex
+
+          **points** : np.ndarray
+              (Mx2) array of points
+
+          **parents** : dict
+              array of parents. Each vertex has a single parent (hence, the tree), except
+              the root node which does not have a parent.
+
+          **vcosts** : np.ndarray
+              (M, 1) array of costs to vertices
+
+      :Returns:
+
+          nx.DiGraph
+              Graph of the tree. Edges have attributes: `cost` (the cost of the edge's
+              leaf -- remember, costs are additive!), `dist` (distance between the
+              vertices).
+
+
+
+
+
+
+
+
+
+
+
+
+
+      ..
+          !! processed by numpydoc !!
+
+
+.. py:class:: RRTStandard(og: numpy.ndarray, n: int, costfn: callable = None, pbar=True)
+
+   Bases: :py:obj:`RRT`
+
+   
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+   .. py:method:: plan(self, xstart: numpy.ndarray, xgoal: numpy.ndarray) -> Tuple[networkx.DiGraph, int]
+
+      
+      Compute a plan from `xstart` to `xgoal`. Using the Standard RRT algorithm.
+
+      Compute a plan from `xstart` to `xgoal`. The plan is a tree, with the root at
+      `xstart` and a leaf at `xgoal`. If xgoal could not be connected to the tree, the
+      leaf nearest to xgoal is considered the "goal" leaf.
+
+      :Parameters:
+
+          **xstart** : np.ndarray
+              (2, ) start point
+
+          **xgoal** : np.ndarray
+              (2, ) goal point
+
+      :Returns:
+
+          Tuple[nx.DiGraph, int]
+              DiGraph of the tree, and the vertex of the goal leaf (if goal could be
+              reached) or the closest tree node.
+
+
+
+
+
+
+
+
+
+
+
+
+
+      ..
+          !! processed by numpydoc !!
+
+
+.. py:class:: RRTStar(og: numpy.ndarray, n: int, r_rewire: float, costfn: callable = None, pbar=True)
+
+   Bases: :py:obj:`RRT`
+
+   
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+   .. py:method:: plan(self, xstart: numpy.ndarray, xgoal: numpy.ndarray)
+
+      
+      Compute a plan from `xstart` to `xgoal`. Using the RRT* algorithm.
+
+      The plan is a tree, with the root at
+      `xstart` and a leaf at `xgoal`. If xgoal could not be connected to the tree, the
+      leaf nearest to xgoal is considered the "goal" leaf.
+
+      :Parameters:
+
+          **xstart** : np.ndarray
+              (2, ) start point
+
+          **xgoal** : np.ndarray
+              (2, ) goal point
+
+      :Returns:
+
+          Tuple[nx.DiGraph, int]
+              DiGraph of the tree, and the vertex of the goal leaf (if goal could be
+              reached) or the closest tree node.
+
+
+
+
+
+
+
+
+
+
+
+
+
+      ..
+          !! processed by numpydoc !!
+
+
+.. py:class:: RRTStarInformed(og: numpy.ndarray, n: int, r_rewire: float, r_goal: float, costfn: callable = None, pbar: bool = True)
+
+   Bases: :py:obj:`RRT`
+
+   
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+   .. py:method:: unitball()
+      :staticmethod:
+
+      
+      draw a point from a uniform distribution bounded by the ball:
+      U(x1, x2) ~ 1 > (x1)^2 + (x2)^2
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+      ..
+          !! processed by numpydoc !!
+
+   .. py:method:: sample_ellipse(self, xstart, xgoal, c, clamp=True)
+
+      
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+      ..
+          !! processed by numpydoc !!
+
+   .. py:method:: rotation_to_world_frame(self, xstart, xgoal)
+
+      
+      calculate the rotation matrix from the world-frame to the frame given
+      by the hyperellipsoid with focal points at xf1=xstart and xf2=xgoal. a unit
+      ball multiplied by this matrix will produce an oriented ellipsoid with those
+      focal points.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+      ..
+          !! processed by numpydoc !!
+
+   .. py:method:: get_ellipse_xform(self, xstart, xgoal, cmax)
+
+      
+      transform vector in unit plane to ellipse plane
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+      ..
+          !! processed by numpydoc !!
+
+   .. py:method:: least_cost(vcosts, vsoln)
+      :staticmethod:
+
+      
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+      ..
+          !! processed by numpydoc !!
+
+   .. py:method:: rad2deg(a)
+      :staticmethod:
+
+      
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+      ..
+          !! processed by numpydoc !!
+
+   .. py:method:: get_ellipse_for_plt(self, xstart, xgoal, cmax) -> Tuple[numpy.ndarray, float, float, float]
+
+      
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+      ..
+          !! processed by numpydoc !!
+
+   .. py:method:: plan(self, xstart: numpy.ndarray, xgoal: numpy.ndarray)
+
+      
+      Compute a plan from `xstart` to `xgoal`. Using the RRT* Informed algorithm.
+
+      Keep in mind: if the cost function does not correspond to the Euclidean cost,
+      this algorithm may undersample the solution space -- therefore, for non R^2
+      distance cost functions, it is recommended to use the RRT* algorithm instead.
+
+      The plan is a tree, with the root at `xstart` and a leaf at `xgoal`. If xgoal
+      could not be connected to the tree, the leaf nearest to xgoal is considered the
+      "goal" leaf.
+
+      :Parameters:
+
+          **xstart** : np.ndarray
+              (2, ) start point
+
+          **xgoal** : np.ndarray
+              (2, ) goal point
+
+      :Returns:
+
+          Tuple[nx.DiGraph, int]
+              DiGraph of the tree, and the vertex of the goal leaf (if goal could be
+              reached) or the closest tree node.
+
+
+
+
+
+
+
+
+
+
+
+
+
+      ..
+          !! processed by numpydoc !!
+
+
+.. py:data:: og
+   
+
+   
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:function:: random_point_og(og: numpy.ndarray) -> numpy.ndarray
+
+   
+   Get a random point in free space from the occupancyGrid.
+
+
+   :Parameters:
+
+       **og** : np.ndarray
+           occupancyGrid. 1 is obstacle, 0 is free space.
+
+   :Returns:
+
+       np.ndarray
+           randomly-sampled point
+
+
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:class:: RRT(og: numpy.ndarray, n: int, costfn: callable = None, pbar: bool = True)
+
+   Bases: :py:obj:`object`
+
+   
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+   .. py:method:: route2gv(self, T: networkx.DiGraph, gv) -> List[int]
+
+      
+      Returns a list of vertices on `T` that are the shortest path from the root of
+      `T` to the node `gv`. This is a wrapper of `nx.shortest_path`.
+
+      see also, `vertices_as_ndarray` method
+
+      :Parameters:
+
+          **T** : nx.DiGraph
+              The RRT DiGraph object, returned by rrt.make()
+
+          **gv** : int
+              vertex of the goal on `T`.
+
+      :Returns:
+
+          List[int]
+              ordered list of vertices on `T`. Iterating through this list will give the
+              vertices of the tree in order from the root to `gv`.
+
+
+
+
+
+
+
+
+
+
+
+
+
+      ..
+          !! processed by numpydoc !!
+
+   .. py:method:: vertices_as_ndarray(self, T: networkx.DiGraph, path: list) -> numpy.ndarray
+
+      
+      Helper method for obtaining an ordered list of vertices on `T` as an (M x 2)
+      array.
+
+
+      :Parameters:
+
+          **T** : nx.DiGraph
+              The RRT DiGraph object, returned by rrt.make()
+
+          **path** : list
+              List of vertices on the RRT DiGraph object
+
+      :Returns:
+
+          np.ndarray
+              (M x 2) array of points. M is the number of vertices in `T`.
+
+
+
+
+
+
+
+
+
+
+
+
+
+      ..
+          !! processed by numpydoc !!
+
+   .. py:method:: near(points: numpy.ndarray, x: numpy.ndarray) -> numpy.ndarray
+      :staticmethod:
+
+      
+      Obtain all points in `points` that are near `x`, sorted in ascending order of
+      distance.
+
+
+      :Parameters:
+
+          **points** : np.ndarray
+              (M x 2) array of points
+
+          **x** : np.ndarray
+              (2, ) array, point to find near
+
+      :Returns:
+
+          np.ndarray
+              (M x 2) sorted array of points)
+
+
+
+
+
+
+
+
+
+
+
+
+
+      ..
+          !! processed by numpydoc !!
+
+   .. py:method:: within(points: numpy.ndarray, x: numpy.ndarray, r: float) -> numpy.ndarray
+      :staticmethod:
+
+      
+      Obtain un-ordered array of points that are within `r` of the point `x`.
+
+
+      :Parameters:
+
+          **points** : np.ndarray
+              (M x 2) array of points
+
+          **x** : np.ndarray
+              (2, ) array, point to find near
+
+          **r** : float
+              radius to search within
+
+      :Returns:
+
+          np.ndarray
+              (? x 2) array of points within `r` of `x`
+
+
+
+
+
+
+
+
+
+
+
+
+
+      ..
+          !! processed by numpydoc !!
+
+   .. py:method:: collisionfree(og, a, b) -> bool
+      :staticmethod:
+
+      
+      Check occupancyGrid for collisions between points `a` and `b`.
+
+
+      :Parameters:
+
+          **og** : np.ndarray
+              the occupancyGrid where 0 is free space. Anything other than 0 is treated as an obstacle.
+
+          **a** : np.ndarray
+              (2, ) array of integer coordinates point a
+
+          **b** : np.ndarray
+              (2, ) array of integer coordinates point b
+
+      :Returns:
+
+          bool
+              whether or not there is a collision between the two points
+
+
+
+
+
+
+
+
+
+
+
+
+
+      ..
+          !! processed by numpydoc !!
+
+   .. py:method:: sample_all_free(self)
+
+      
+      Sample uniformly from free space in this object's occupancy grid.
+
+
+
+      :Returns:
+
+          np.ndarray
+              (2, ) array of a point in free space of occupancy grid.
+
+
+
+
+
+
+
+
+
+
+
+
+
+      ..
+          !! processed by numpydoc !!
+
+   .. py:method:: plan(self, xstart: numpy.ndarray, xgoal: numpy.ndarray)
+      :abstractmethod:
+
+      
+      Compute a plan from `xstart` to `xgoal`. Raises an exception if called on the
+      base class.
+
+
+      :Parameters:
+
+          **xstart** : np.ndarray
+              starting point
+
+          **xgoal** : np.ndarray
+              goal point
+
+
+
+
+
+      :Raises:
+
+          NotImplementedError
+              if called on the base class
+
+
+
+
+
+
+
+
+
+      ..
+          !! processed by numpydoc !!
+
+   .. py:method:: set_og(self, og_new: numpy.ndarray)
+
+      
+      Set a new occupancy grid. This method also updates free space in the passed
+      occupancy grid.
+
+
+      :Parameters:
+
+          **og_new** : np.ndarray
+              the new occupancy grid
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+      ..
+          !! processed by numpydoc !!
+
+   .. py:method:: set_n(self, n: int)
+
+      
+      Update the number of attempted sample points, `n`.
+
+
+      :Parameters:
+
+          **n** : int
+              new number of sample points attempted when calling plan() from this object.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+      ..
+          !! processed by numpydoc !!
+
+   .. py:method:: go2goal(self, vcosts, points, xgoal, j, children, parents)
+
+      
+      Attempt to find a path from an existing point on the tree to the goal. This will
+      update `vcosts`, `points`, `children`, and `parents` if a path is found, and
+      return a vertex corresponding to the goal. If no path can be computed from the
+      tree to the goal, the nearest vertex to the goal is selected.
+
+
+      :Parameters:
+
+          **vcosts** : np.ndarray
+              (M x 1) array of costs to vertices)
+
+          **points** : np.ndarray
+              (Mx2) array of points
+
+          **xgoal** : np.ndarray
+              (2, ) array of goal point
+
+          **j** : int
+              counter for the "current" vertex's index
+
+          **children** : dict
+              dict of children of vertices
+
+          **parents** : dict
+              dict of parents of children
+
+      :Returns:
+
+          tuple (int, dict, dict, np.ndarray, np.ndarray)
+              tuple containing (vgoal, children, parents, points, vcosts)
+
+
+
+
+
+
+
+
+
+
+
+
+
+      ..
+          !! processed by numpydoc !!
+
+   .. py:method:: build_graph(self, vgoal, points, parents, vcosts)
+
+      
+      Build the networkx DiGraph object from the points, parents dict, costs dict.
+
+
+      :Parameters:
+
+          **vgoal** : int
+              index of the goal vertex
+
+          **points** : np.ndarray
+              (Mx2) array of points
+
+          **parents** : dict
+              array of parents. Each vertex has a single parent (hence, the tree), except
+              the root node which does not have a parent.
+
+          **vcosts** : np.ndarray
+              (M, 1) array of costs to vertices
+
+      :Returns:
+
+          nx.DiGraph
+              Graph of the tree. Edges have attributes: `cost` (the cost of the edge's
+              leaf -- remember, costs are additive!), `dist` (distance between the
+              vertices).
+
+
+
+
+
+
+
+
+
+
+
+
+
+      ..
+          !! processed by numpydoc !!
+
+
+.. py:data:: DEFAULT_APPEARANCE
+   
+
+   
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:class:: DynamicEnvironmentAnimation(movespeed: float, r_within_goal: float, rrtobj: rrtplanner.rrt.RRT, appearance: dict = DEFAULT_APPEARANCE, buffer_size: int = None)
+
+   Bases: :py:obj:`object`
+
+   
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+   .. py:method:: clamp(xy, shape)
+      :staticmethod:
+
+      
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+      ..
+          !! processed by numpydoc !!
+
+   .. py:method:: simulate_dynamic_goals(self, og_3d)
+
+      
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+      ..
+          !! processed by numpydoc !!
+
+   .. py:method:: animate(self, goals, positions, paths, trees, og_3d)
+
+      
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+      ..
+          !! processed by numpydoc !!
+
+   .. py:method:: make_animation(self, og_3d)
+
+      
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+      ..
+          !! processed by numpydoc !!
+
+
+.. py:data:: frames
+   :annotation: = 200
+
+   
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:function:: perlin_occupancygrid(w: int, h: int, thresh: float = 0.33, frames: int = None) -> numpy.ndarray
+
+   
+   Make an occupancyGrid with thresholded Perlin Noise.
+
+
+   :Parameters:
+
+       **w** : int
+           width of the occupancyGrid
+
+       **h** : int
+           height of the occupancyGrid
+
+       **thresh** : float, optional
+           threshold of the noise. 0.1 produces an occupancyGrid that is mostly free space,
+           0.9 produces an occupancyGrid that is mostly obstacle space. by default 0.3
+
+       **frames** : int, optional
+           number of "frames" of occupancygrid. If a number is passed, this will produce a
+           3-dimensional occupancygrid, with the first dimension being time. This is
+           designed to be used to simulate e.g. a dynamically, but smoothly changing
+           occupancyGrid., by default None
+
+   :Returns:
+
+       np.ndarray
+           occupancyGrid where 1 is occupied and 0 is free space.
+
+
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:data:: fig
+   
+
+   
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:function:: remove_axticks(ax)
+
+   
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:function:: plot_og(ax: matplotlib.axes.Axes, og: numpy.ndarray, cmap: str = 'Greys', vmin=0, vmax=1)
+
+   
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:function:: plot_start_goal(ax, xstart, xgoal)
+
+   
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:function:: plot_rrt_lines(ax, T, color_costs=True, cmap='viridis', color='tan', alpha=1.0)
+
+   
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:function:: plot_rrt_points(ax, T)
+
+   
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:function:: plot_ellipses(ax, ellipses, cmap='RdPu')
+
+   
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:function:: plot_path(ax, pathlines: numpy.ndarray, zorder=10)
+
+   
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
+.. py:data:: axs
+   :annotation: = []
+
+   
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   ..
+       !! processed by numpydoc !!
+
