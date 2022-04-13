@@ -5,7 +5,8 @@ from matplotlib.animation import FuncAnimation
 from matplotlib.patches import Circle
 from tqdm import tqdm
 from scipy.ndimage import binary_dilation
-from rrt import random_point_og, RRT
+
+from .rrt import random_point_og, RRT
 
 
 DEFAULT_APPEARANCE = {
