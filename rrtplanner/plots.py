@@ -4,6 +4,7 @@ from matplotlib import cm
 from matplotlib.patches import Ellipse
 import numpy as np
 from matplotlib.axes import Axes
+from mpl_toolkits.mplot3d.axes3d import Axes3D
 
 
 def remove_axticks(ax):
@@ -19,6 +20,11 @@ def plot_og(ax: Axes, og: np.ndarray, cmap: str = "Greys", vmin=0, vmax=1):
 def plot_start_goal(ax, xstart, xgoal):
     ax.scatter(xstart[0], xstart[1], c="r", s=50, label="start", marker="o")
     ax.scatter(xgoal[0], xgoal[1], c="b", s=50, label="goal", marker="*")
+
+
+def plotly_get_lines(T):
+    for e1, e2 in T.edges():
+        yield (T.nodes[e1]["pt"], T.nodes[e2]["pt"])
 
 
 def plot_rrt_lines(ax, T, color_costs=True, cmap="viridis", color="tan", alpha=1.0):
@@ -54,6 +60,43 @@ def plot_ellipses(ax, ellipses, cmap="RdPu"):
 def plot_path(ax, pathlines: np.ndarray, zorder=10):
     lc = LineCollection(pathlines, color="r", linewidth=2, zorder=zorder)
     ax.add_collection(lc)
+
+
+def plot_3D_terrain(
+    ax: Axes3D,
+    X,
+    Y,
+    Z,
+    zsquash: float = 0.5,
+    alpha: float = 0.5,
+    wireframe: bool = False,
+    cmap="magma",
+    meshscale=2,
+) -> Axes3D:
+    ar = X.shape[0] / X.shape[1]
+    ax.set_box_aspect((1, 1 * ar, zsquash))
+    ax.set_proj_type("ortho")
+    zmin, zmax = Z.min(), Z.max()
+    norm = Normalize(zmin - abs(zmax - zmin) * 0.1, zmax)
+    colors = cm.get_cmap(cmap)(norm(Z))
+    if wireframe:
+        linewidth = 0.5
+    else:
+        linewidth = 1.0
+    S = ax.plot_surface(
+        X,
+        Y,
+        Z,
+        facecolors=colors,
+        shade=not wireframe,
+        zorder=2,
+        rcount=Z.shape[0] // meshscale,
+        ccount=Z.shape[1] // meshscale,
+        linewidth=linewidth,
+    )
+    if wireframe:
+        S.set_facecolor((0, 0, 0, 0))
+    return ax
 
 
 if __name__ == "__main__":
