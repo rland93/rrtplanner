@@ -45,6 +45,41 @@ def perlin_occupancygrid(
     return xynoise
 
 
+def perlin_terrain(w: int, h: int, scale: int = 1, frames: int = None) -> np.ndarray:
+    """Make a terrain with thresholded Perlin Noise.
+
+    Parameters
+    ----------
+    w : int
+        width of the terrain
+    h : int
+        height of the terrain
+    frames : int, optional
+        number of "frames" of terrain. If a number is passed, this will produce a
+        3-dimensional terrain, with the first dimension being time. This is
+        designed to be used to simulate e.g. a dynamically, but smoothly changing
+        terrain., by default None
+
+    Returns
+    -------
+    np.ndarray
+        terrain array where value is terrain height (float between 0, 1).
+    """
+    # create noise
+    noise = pyfastnoisesimd.Noise()
+    noise.frequency = 0.01 * scale
+    noise.noiseType = pyfastnoisesimd.NoiseType(5)
+    if frames is not None:
+        xynoise = noise.genAsGrid(shape=[frames, w, h])
+    else:
+        xynoise = noise.genAsGrid(shape=[1, w, h])
+        xynoise = np.squeeze(xynoise)
+    # normalize to [0,1]
+    xynoise -= xynoise.min()
+    xynoise = xynoise / (xynoise.max() - xynoise.min())
+    return xynoise.T
+
+
 if __name__ == "__main__":
     fig = plt.figure()
     ax = fig.add_subplot(111)

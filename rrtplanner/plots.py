@@ -4,6 +4,36 @@ from matplotlib import cm
 from matplotlib.patches import Ellipse
 import numpy as np
 from matplotlib.axes import Axes
+from mpl_toolkits.mplot3d.axes3d import Axes3D
+
+
+def plot_surface(ax: Axes3D, X, Y, S, zsquash=0.2, wireframe=True, cmap="viridis"):
+    if not isinstance(ax, Axes3D):
+        raise TypeError(f"ax must be an Axes3D object. Got {type(ax)}")
+
+    ar = X.shape[0] / X.shape[1]
+    ax.set_box_aspect((1, 1 * ar, zsquash))
+    ax.set_proj_type("ortho")
+    # draw sheet
+    if wireframe:
+        hmin, hmax = S.min(), S.max()
+        norm = Normalize((hmin - hmax) * 0.03, hmax)
+        colors = cm.get_cmap(cmap)(norm(S))
+        s = ax.plot_surface(
+            X,
+            Y,
+            S,
+            zorder=2,
+            linewidths=0.5,
+            shade=False,
+            facecolors=colors,
+            rcount=X.shape[0],
+            ccount=X.shape[1],
+        )
+        s.set_facecolor((0, 0, 0, 0))
+    else:
+        ax.plot_surface(X, Y, S, cmap=cm.get_cmap(cmap), zorder=2)
+    return ax
 
 
 def remove_axticks(ax):
