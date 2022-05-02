@@ -70,14 +70,14 @@ def perlin_terrain(w: int, h: int, scale: int = 1, frames: int = None) -> np.nda
     noise.frequency = 0.01 * scale
     noise.noiseType = pyfastnoisesimd.NoiseType(5)
     if frames is not None:
-        xynoise = noise.genAsGrid(shape=[frames, w, h])
+        xynoise = noise.genAsGrid(shape=[frames, h, w])
     else:
-        xynoise = noise.genAsGrid(shape=[1, w, h])
+        xynoise = noise.genAsGrid(shape=[1, h, w])
         xynoise = np.squeeze(xynoise)
     # normalize to [0,1]
     xynoise -= xynoise.min()
     xynoise = xynoise / (xynoise.max() - xynoise.min())
-    return xynoise.T
+    return xynoise
 
 
 if __name__ == "__main__":

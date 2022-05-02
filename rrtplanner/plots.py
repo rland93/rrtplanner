@@ -11,9 +11,8 @@ def plot_surface(ax: Axes3D, X, Y, S, zsquash=0.2, wireframe=True, cmap="viridis
     if not isinstance(ax, Axes3D):
         raise TypeError(f"ax must be an Axes3D object. Got {type(ax)}")
 
-    ar = X.shape[0] / X.shape[1]
-    ax.set_box_aspect((1, 1 * ar, zsquash))
-    ax.set_proj_type("ortho")
+    ax.set_box_aspect((np.ptp(X), np.ptp(Y), np.ptp(S) * zsquash))
+    # ax.set_proj_type("ortho")
     # draw sheet
     if wireframe:
         hmin, hmax = S.min(), S.max()
