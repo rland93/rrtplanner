@@ -3,6 +3,7 @@ import numpy as np
 from mpl_toolkits.mplot3d.axes3d import Axes3D
 import matplotlib.pyplot as plt
 from matplotlib import cm
+from .oggen import perlin_terrain
 
 
 def xy_grid(xrange, yrange, shape):
