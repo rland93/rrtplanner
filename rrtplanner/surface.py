@@ -93,12 +93,13 @@ class Surface(object):
         return self.S.value
 
 
-def example_terrain(xmax, ymax, cols, rows):
+def example_terrain(xmax, ymax, cols, rows, h=30.0):
     X, Y = xy_grid([0, xmax], [0, ymax], [cols, rows])
     H = perlin_terrain(cols, rows, scale=1.0)
     H *= perlin_terrain(cols, rows, scale=2.0)
     H *= perlin_terrain(cols, rows, scale=4.0)
     H = apply_ridge(X, H, steep=5.0, width=1.0, fn="bell")
+    H *= 50.0 / np.ptp(H)
     return X, Y, H
 
 
@@ -119,7 +120,6 @@ def apply_ridge(X, H, steep, width, fn="arctan"):
 
 
 if __name__ == "__main__":
-    from oggen import perlin_terrain
     from plots import plot_surface
     from matplotlib.animation import FuncAnimation
 
@@ -138,6 +138,7 @@ if __name__ == "__main__":
 
     fig = plt.figure()
     ax = fig.add_subplot(111, projection="3d")
+    print(type(ax))
     plot_surface(ax, X, Y, H, zsquash=zsq, wireframe=False, cmap="gist_earth")
     plt.show()
 
