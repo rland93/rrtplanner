@@ -80,6 +80,22 @@ def perlin_terrain(w: int, h: int, scale: int = 1, frames: int = None) -> np.nda
     return xynoise
 
 
+def apply_ridge(X, H, steep, width, fn="arctan"):
+    """
+    Apply a "ridge" function for terrain generation.
+    """
+    mid = np.ptp(X) / 2.0
+    if fn == "arctan":
+        for i in range(X.shape[1]):
+            t1 = np.arctan(steep * (X[:, i] - mid) - width)
+            t2 = np.arctan(steep * (X[:, i] - mid) + width)
+            H[:, i] *= -(t1 - t2) / (2.0 * np.arctan(width))
+    elif fn == "bell":
+        for i in range(X.shape[1]):
+            H[:, i] *= np.exp(-((X[:, i] - mid) ** 2) / (2.0 * steep**2))
+    return H
+
+
 if __name__ == "__main__":
     fig = plt.figure()
     ax = fig.add_subplot(111)

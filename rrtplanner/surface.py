@@ -84,12 +84,13 @@ class Surface(object):
         c_d2y = cp.abs(self._diff(fy_1, fy, fy1, dh, k=2)) <= self.mind2x
 
         subjectto += [c_dx, c_dy, c_d2x, c_d2y]
-        objective = cp.sum_squares(self.S)
+        objective = cp.sum(self.S)
 
-        return cp.Problem(cp.Minimize(objective), subjectto)
+        problem = cp.Problem(cp.Minimize(objective), subjectto)
+        return problem
 
-    def solve(self, verbose=False, solver="ECOS"):
-        self.problem.solve(verbose=verbose, solver=solver)
+    def solve(self, verbose=False, solver=cp.ECOS, warm_start=False):
+        self.problem.solve(verbose=verbose, solver=solver, warm_start=warm_start)
         return self.S.value
 
 
@@ -117,42 +118,3 @@ def apply_ridge(X, H, steep, width, fn="arctan"):
         for i in range(X.shape[1]):
             H[:, i] *= np.exp(-((X[:, i] - mid) ** 2) / (2.0 * steep**2))
     return H
-
-
-if __name__ == "__main__":
-    from plots import plot_surface
-    from matplotlib.animation import FuncAnimation
-
-    xmax, ymax = 80.0, 80.0
-    cols, rows = 50, 40
-    zsq = 0.5
-
-    params = {
-        "minh": 5.0,
-        "gaph": 4.0,
-        "mindx": 1.5,
-        "mind2x": 0.1,
-    }
-
-    X, Y, H = example_terrain(xmax, ymax, cols, rows)
-
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection="3d")
-    print(type(ax))
-    plot_surface(ax, X, Y, H, zsquash=zsq, wireframe=False, cmap="gist_earth")
-    plt.show()
-
-    surf = Surface(X, Y, H, params)
-    S = surf.solve(verbose=True)
-
-    fig = plt.figure(figsize=(10, 10))
-    gs = fig.add_gridspec(3, 3)
-
-    ax0 = fig.add_subplot(gs[:2, :], projection="3d")
-    ax1 = fig.add_subplot(gs[2, 0])
-    ax2 = fig.add_subplot(gs[2, 1])
-
-    ax1.contour(X, Y, S, levels=12, cmap="bone")
-    plot_surface(ax0, X, Y, H, zsquash=zsq, wireframe=False, cmap="gist_earth")
-    plot_surface(ax0, X, Y, S, zsquash=zsq, wireframe=True, cmap="bone")
-    plt.show()
