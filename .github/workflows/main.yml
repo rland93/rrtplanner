@@ -7,7 +7,6 @@ on:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
 
     steps:
@@ -15,7 +14,7 @@ jobs:
     # Standard drop-in approach that should work for most people.
     - uses: ammaraskar/sphinx-action@master
       with:
-        pre-build-command: "pip install sphinx-rtd-theme sphinx-autoapi numpydoc numpy==1.21 scipy matplotlib pyfastnoisesimd numba tqdm networkx"
+        pre-build-command: "if  [ -f requirements.txt ]; then pip install -r requirements.txt; fi"
         docs-folder: "docs/"
     # Great extra actions to compose with:
     # Create an artifact of the html output.
@@ -44,4 +43,15 @@ jobs:
         branch: gh-pages
         directory: gh-pages
         github_token: ${{ secrets.GITHUB_TOKEN }}
-    # ===============================
+
+    - name: Run package creation
+      run: |
+        git checkout main
+        cd ${GITHUB_WORKSPACE}
+        python -m pip install --user --upgrade build
+        python -m build
+    - name: Archive package
+      uses: actions/upload-artifact@v2
+      with:
+        name: CI
+        path: dist/
