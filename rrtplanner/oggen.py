@@ -70,14 +70,47 @@ def perlin_terrain(w: int, h: int, scale: int = 1, frames: int = None) -> np.nda
     noise.frequency = 0.01 * scale
     noise.noiseType = pyfastnoisesimd.NoiseType(5)
     if frames is not None:
-        xynoise = noise.genAsGrid(shape=[frames, w, h])
+        xynoise = noise.genAsGrid(shape=[frames, h, w])
     else:
-        xynoise = noise.genAsGrid(shape=[1, w, h])
+        xynoise = noise.genAsGrid(shape=[1, h, w])
         xynoise = np.squeeze(xynoise)
     # normalize to [0,1]
     xynoise -= xynoise.min()
     xynoise = xynoise / (xynoise.max() - xynoise.min())
     return xynoise
+
+
+def apply_ridge(X, H, steep, width, fn="arctan"):
+    """
+    Apply a "ridge" function for terrain generation.
+    """
+    mid = np.ptp(X) / 2.0
+    if fn == "arctan":
+        for i in range(X.shape[1]):
+            t1 = np.arctan(steep * (X[:, i] - mid) - width)
+            t2 = np.arctan(steep * (X[:, i] - mid) + width)
+            H[:, i] *= -(t1 - t2) / (2.0 * np.arctan(width))
+    elif fn == "bell":
+        for i in range(X.shape[1]):
+            H[:, i] *= np.exp(-((X[:, i] - mid) ** 2) / (2.0 * steep**2))
+    return H
+
+
+def xy_grid(xrange, yrange, shape):
+    xr = np.linspace(xrange[0], xrange[1], shape[0])
+    yr = np.linspace(yrange[0], yrange[1], shape[1])
+    X, Y = np.meshgrid(xr, yr)
+    return X, Y
+
+
+def example_terrain(xmax, ymax, cols, rows, h=30.0):
+    X, Y = xy_grid([0, xmax], [0, ymax], [cols, rows])
+    H = perlin_terrain(cols, rows, scale=1.0)
+    H *= perlin_terrain(cols, rows, scale=2.0)
+    H *= perlin_terrain(cols, rows, scale=4.0)
+    H = apply_ridge(X, H, steep=5.0, width=1.0, fn="bell")
+    H *= 50.0 / np.ptp(H)
+    return X, Y, H
 
 
 if __name__ == "__main__":
