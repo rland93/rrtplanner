@@ -108,7 +108,7 @@ def example_terrain(xmax, ymax, cols, rows, h=30.0):
     H = perlin_terrain(cols, rows, scale=1.0)
     H *= perlin_terrain(cols, rows, scale=2.0)
     H *= perlin_terrain(cols, rows, scale=4.0)
-    H = apply_ridge(X, H, steep=5.0, width=1.0, fn="bell")
+    H = apply_ridge(X, H, steep=20.0, width=1.0, fn="bell")
     H *= 50.0 / np.ptp(H)
     return X, Y, H
 

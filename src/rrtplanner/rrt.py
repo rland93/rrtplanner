@@ -71,11 +71,12 @@ class RRT(object):
                 v: int,
                 x: np.ndarray,
             ) -> float:
-                return vcosts[v] + r2norm(points[v] - x)
+                if points[v][0] == -1 or points[v][1] == -1:
+                    return -1
+                else:
+                    return vcosts[v] + r2norm(points[v] - x)
 
         self.cost = costfn
-        self.not_a_point = [np.inf, np.inf]
-        self.not_a_dist = np.inf
 
     def route2gv(self, T: nx.DiGraph, gv) -> List[int]:
         """
@@ -123,7 +124,7 @@ class RRT(object):
 
     @staticmethod
     def near(points: np.ndarray, x: np.ndarray) -> np.ndarray:
-        """
+        """s
         Obtain all points in `points` that are near `x`, sorted in ascending order of
         distance.
 
@@ -347,7 +348,8 @@ class RRT(object):
             leaf -- remember, costs are additive!), `dist` (distance between the
             vertices).
         """
-        assert points.max() < self.not_a_point[0] - 1
+        for p in points:
+            assert p[0] != -1 and p[1] != -1
         # build graph
         T = nx.DiGraph()
         T.add_node(vgoal, pt=points[vgoal])
@@ -397,8 +399,8 @@ class RRTStandard(RRT):
             reached) or the closest tree node.
         """
         sampled = set()
-        points = np.full((self.n, 2), dtype=int, fill_value=self.not_a_point)
-        vcosts = np.full((self.n,), fill_value=self.not_a_dist)
+        points = np.full((self.n, 2), dtype=int, fill_value=-1)
+        vcosts = np.full((self.n,), fill_value=-1)
         parents, children = {}, defaultdict(list)
         points[0] = xstart
         vcosts[0] = 0
@@ -453,6 +455,7 @@ class RRTStar(RRT):
     ):
         super().__init__(og, n, costfn=costfn, pbar=pbar)
         self.r_rewire = r_rewire
+        self.ndim = 2
 
     def plan(self, xstart: np.ndarray, xgoal: np.ndarray):
         """
@@ -476,8 +479,8 @@ class RRTStar(RRT):
             reached) or the closest tree node.
         """
         sampled = set()
-        points = np.full((self.n, 2), dtype=int, fill_value=self.not_a_point)
-        vcosts = np.full((self.n,), fill_value=self.not_a_dist)
+        points = np.full((self.n, self.ndim), dtype=int, fill_value=-1)
+        vcosts = np.full((self.n,), fill_value=-1)
         children, parents = defaultdict(list), {}
         points[0] = xstart
         vcosts[0] = 0
@@ -668,8 +671,8 @@ class RRTStarInformed(RRT):
         """
         vsoln = []
         sampled = set()
-        points = np.full((self.n, 2), dtype=int, fill_value=self.not_a_point)
-        vcosts = np.full((self.n,), fill_value=self.not_a_dist)
+        points = np.full((self.n, 2), dtype=int, fill_value=-1)
+        vcosts = np.full((self.n,), fill_value=-1)
         parents, children = {}, defaultdict(list)
         points[0] = xstart
         vcosts[0] = 0

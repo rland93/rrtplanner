@@ -5,6 +5,9 @@ from matplotlib.patches import Ellipse
 import numpy as np
 from matplotlib.axes import Axes
 from mpl_toolkits.mplot3d.axes3d import Axes3D
+from plotly import graph_objects as go
+from plotly import subplots
+from matplotlib import gridspec
 
 
 def plot_surface(ax: Axes3D, X, Y, S, zsquash=0.2, wireframe=True, cmap="viridis"):
@@ -125,6 +128,168 @@ def plot_3D_terrain(
     if wireframe:
         S.set_facecolor((0, 0, 0, 0))
     return ax
+
+
+def make_ensemble_matplotlib(
+    X,
+    Y,
+    H,
+    S,
+    waypoints=None,
+):
+    fig = plt.figure(tight_layout=True)
+    gs = gridspec.GridSpec(3, 2, figure=fig)
+
+    ax1 = fig.add_subplot(gs[:2, :], projection="3d")
+    plot_3D_terrain(ax1, X, Y, H, cmap="gist_earth")
+    plot_3D_terrain(ax1, X, Y, S, wireframe=True, cmap="bone")
+    if waypoints is not None:
+        ax1.plot(waypoints[:, 0], waypoints[:, 1], waypoints[:, 2], "o", c="r")
+    ax1.set_title("3-D View")
+
+    ax2 = fig.add_subplot(gs[2, 0])
+    ax2.contour(X, Y, H, levels=10, cmap="gist_earth")
+    if waypoints is not None:
+        ax2.plot(waypoints[:, 0], waypoints[:, 1], "o", c="r")
+    ax2.set_title("2-D Contur (Terrain)")
+    ax2.set_aspect("equal")
+
+    ax3 = fig.add_subplot(gs[2, 1])
+    ax3.set_title("2-D Contur (Surface)")
+    ax3.contour(X, Y, S, levels=20, cmap="bone")
+    if waypoints is not None:
+        ax3.plot(waypoints[:, 0], waypoints[:, 1], "o", c="r")
+
+    ax3.set_aspect("equal")
+    return fig
+
+
+def generate_ensemble_plotly(
+    X,
+    Y,
+    H,
+    S,
+    aspectyx,
+    aspectzx,
+    waypoints=None,
+    figtitle="Terrain",
+    ax3d_title="3D View",
+    ax2d_terrain_title="Contour (Terrain)",
+    ax2d_surface_title="Contour (Surface)",
+    terrain_cmap="gray_r",
+    surface_cmap="Ice",
+):
+    fig = subplots.make_subplots(
+        rows=2,
+        cols=2,
+        specs=[[{"rowspan": 2, "is_3d": True}, {}], [None, {}]],
+        subplot_titles=(ax3d_title, ax2d_terrain_title, ax2d_surface_title),
+    )
+    # Terrain mesh
+    fig.add_trace(
+        go.Surface(
+            x=X,
+            y=Y,
+            z=H,
+            colorscale=terrain_cmap,
+            colorbar=dict(x=0.0),
+            showscale=False,
+        ),
+        row=1,
+        col=1,
+    )
+    # Surface mesh
+    fig.add_trace(
+        go.Surface(
+            x=X,
+            y=Y,
+            z=S,
+            opacity=0.45,
+            colorscale=surface_cmap,
+            colorbar=dict(x=0.05),
+            showscale=False,
+        ),
+        row=1,
+        col=1,
+    )
+    # 3D waypoints
+    if waypoints is not None:
+        fig.add_trace(
+            go.Scatter3d(
+                x=waypoints[:, 0],
+                y=waypoints[:, 1],
+                z=waypoints[:, 2],
+                mode="markers",
+                marker=dict(color="blue", size=5),
+            ),
+            row=1,
+            col=1,
+        )
+
+    # 2D Contour, Terrain
+    fig.add_trace(
+        go.Contour(
+            z=H,
+            contours_coloring="lines",
+            colorscale=terrain_cmap,
+            ncontours=20,
+            showscale=False,
+            showlegend=False,
+            line_width=2,
+        ),
+        row=1,
+        col=2,
+    )
+    # 2D Waypoints
+    if waypoints is not None:
+        for (r, c) in [(1, 2), (2, 2)]:
+            fig.add_trace(
+                go.Scatter(
+                    x=waypoints[:, 0],
+                    y=waypoints[:, 1],
+                    mode="markers",
+                    marker=dict(color="blue", size=5),
+                    showlegend=False,
+                ),
+                row=r,
+                col=c,
+            )
+    # 2D Contour of Surface
+    fig.add_trace(
+        go.Contour(
+            z=S,
+            contours_coloring="lines",
+            colorscale=surface_cmap,
+            ncontours=20,
+            showscale=False,
+            showlegend=False,
+            line_width=2,
+        ),
+        row=2,
+        col=2,
+    )
+
+    fig.update_layout(
+        title="Terrain",
+        margin=dict(
+            l=65,
+            r=50,
+            b=65,
+            t=90,
+        ),
+    )
+
+    fig.update_layout(
+        scene_aspectmode="manual",
+        scene_aspectratio=dict(
+            x=1.0,
+            y=aspectyx,
+            z=aspectzx,
+        ),
+    )
+    # fig.update_yaxes(col=2, row=1, scaleanchor="x", scaleratio=1)
+    fig.update_yaxes(col=2, row=2, scaleanchor="x", scaleratio=1)
+    return fig
 
 
 if __name__ == "__main__":
