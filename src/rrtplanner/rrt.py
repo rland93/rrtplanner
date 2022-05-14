@@ -140,6 +140,8 @@ class RRT(object):
         np.ndarray
             (M x 2) sorted array of points)
         """
+        # only compare non -1 points
+        points = points[np.where(np.any(points != -1, axis=1))]
         # vector from x to all points
         p2x = points - x
         # norm of that vector
@@ -166,6 +168,8 @@ class RRT(object):
         np.ndarray
             (? x 2) array of points within `r` of `x`
         """
+        # only compare non -1 points
+        points = points[np.where(np.any(points != -1, axis=1))]
         # vector from x to all points
         p2x = points - x
         # dot dist with self to get r2
@@ -348,8 +352,6 @@ class RRT(object):
             leaf -- remember, costs are additive!), `dist` (distance between the
             vertices).
         """
-        for p in points:
-            assert p[0] != -1 and p[1] != -1
         # build graph
         T = nx.DiGraph()
         T.add_node(vgoal, pt=points[vgoal])
@@ -437,7 +439,8 @@ class RRTStandard(RRT):
 
         # build graph
         T = self.build_graph(vgoal, points, parents, vcosts)
-
+        self.points = points[np.where(np.any(points != -1, axis=1))]
+        self.vcosts = vcosts[np.where(vcosts != -1)]
         return T, vgoal
 
 
@@ -546,7 +549,8 @@ class RRTStar(RRT):
         )
         # build graph
         T = self.build_graph(vgoal, points, parents, vcosts)
-
+        self.points = points[np.where(np.any(points != -1, axis=1))]
+        self.vcosts = vcosts[np.where(vcosts != -1)]
         return T, vgoal
 
 
@@ -748,7 +752,8 @@ class RRTStarInformed(RRT):
 
         # build graph
         T = self.build_graph(vgoal, points, parents, vcosts)
-
+        self.points = points[np.where(np.any(points != -1, axis=1))]
+        self.vcosts = vcosts[np.where(vcosts != -1)]
         return T, vgoal
 
 
@@ -758,22 +763,20 @@ if __name__ == "__main__":
     from plots import plot_og, plot_rrt_lines, plot_path, plot_start_goal
 
     # create occupancy Grid
-    w, h = 800, 450
+    w, h = 700, 600
     og = perlin_occupancygrid(w, h)
 
     # create planner
-    rrtplanner = RRTStarInformed(og, n=2000, r_rewire=64, r_goal=12)
+    rrts = RRTStar(og, n=100, r_rewire=64)
     xstart = random_point_og(og)
     xgoal = random_point_og(og)
 
-    T, gv = rrtplanner.make(xstart, xgoal)
-    pathlines = rrtplanner.route2gv(T, gv)
-    pathlines = rrtplanner.path_points(T, pathlines)
+    T, gv = rrts.plan(xstart, xgoal)
+    path = rrts.route2gv(T, gv)
 
-    fig = plt.figure(figsize=(16, 9))
+    fig = plt.figure(figsize=(7, 6))
     ax = fig.add_subplot(111)
     plot_og(ax, og)
     plot_start_goal(ax, xstart, xgoal)
     plot_rrt_lines(ax, T, color_costs=True)
-    plot_path(ax, pathlines)
     plt.show()
