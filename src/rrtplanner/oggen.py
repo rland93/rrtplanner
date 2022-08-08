@@ -80,11 +80,12 @@ def perlin_terrain(w: int, h: int, scale: int = 1, frames: int = None) -> np.nda
     return xynoise
 
 
-def apply_ridge(X, H, steep, width, fn="arctan"):
+def apply_ridge(X, H, steep, width, noise=5.0, fn="arctan"):
     """
     Apply a "ridge" function for terrain generation.
     """
     mid = np.ptp(X) / 2.0
+
     if fn == "arctan":
         for i in range(X.shape[1]):
             t1 = np.arctan(steep * (X[:, i] - mid) - width)
@@ -92,7 +93,8 @@ def apply_ridge(X, H, steep, width, fn="arctan"):
             H[:, i] *= -(t1 - t2) / (2.0 * np.arctan(width))
     elif fn == "bell":
         for i in range(X.shape[1]):
-            H[:, i] *= np.exp(-((X[:, i] - mid) ** 2) / (2.0 * steep**2))
+            hillcurve = np.exp(-((X[:, i] - mid) ** 2) / (2.0 * steep**2))
+            H[:, i] *= hillcurve
     return H
 
 
@@ -103,14 +105,27 @@ def xy_grid(xrange, yrange, shape):
     return X, Y
 
 
-def example_terrain(xmax, ymax, cols, rows, h=30.0):
+def example_terrain(xmax, ymax, hmax, cols, rows):
     X, Y = xy_grid([0, xmax], [0, ymax], [cols, rows])
     H = perlin_terrain(cols, rows, scale=1.0)
-    H *= perlin_terrain(cols, rows, scale=2.0)
-    H *= perlin_terrain(cols, rows, scale=4.0)
+    H += 2.0 * perlin_terrain(cols, rows, scale=2.0)
+    H *= 4.0 * perlin_terrain(cols, rows, scale=2.0)
     H = apply_ridge(X, H, steep=20.0, width=1.0, fn="bell")
-    H *= 50.0 / np.ptp(H)
+    H *= float(hmax) / np.ptp(H)
     return X, Y, H
+
+
+def corridor_og(shape, xposition=0.4, xwidth=0.1, yposition=0.5, opening=0.35):
+    og = np.zeros(shape)
+    xstart = xposition - xwidth / 2.0
+    xend = xposition + xwidth / 2.0
+    ystart = yposition - opening / 2.0
+    yend = yposition + opening / 2.0
+    # create "wall"
+    og[:, int(xstart * shape[1]) : int(xend * shape[1])] = 1.0
+    # create "hole" in the "wall"
+    og[int(ystart * shape[0]) : int(yend * shape[0]), :] = 0.0
+    return og
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 from matplotlib.colors import Normalize
 from matplotlib.collections import LineCollection
-from matplotlib import cm
+from matplotlib import cm, colors
 from matplotlib.patches import Ellipse
 import numpy as np
 from matplotlib.axes import Axes
@@ -34,7 +34,18 @@ def plot_surface(ax: Axes3D, X, Y, S, zsquash=0.2, wireframe=True, cmap="viridis
         )
         s.set_facecolor((0, 0, 0, 0))
     else:
-        ax.plot_surface(X, Y, S, cmap=cm.get_cmap(cmap), zorder=2)
+        hmin, hmax = S.min(), S.max()
+        norm = Normalize((hmin - hmax) * 0.03, hmax)
+        colors = cm.get_cmap(cmap)(norm(S))
+        ax.plot_surface(
+            X,
+            Y,
+            S,
+            facecolors=colors,
+            zorder=2,
+            rcount=X.shape[0],
+            ccount=X.shape[1],
+        )
     return ax
 
 
@@ -164,7 +175,7 @@ def make_ensemble_matplotlib(
     return fig
 
 
-def generate_ensemble_plotly(
+def ensemble_plotly(
     X,
     Y,
     H,
@@ -292,6 +303,88 @@ def generate_ensemble_plotly(
     return fig
 
 
+def surface_plotly(
+    fig, X, Y, H, S, waypoints=None, terrain_cmap="gray_r", surf_cmap="Ice"
+):
+    # Terrain mesh
+    fig.add_trace(
+        go.Surface(
+            x=X,
+            y=Y,
+            z=H,
+            colorscale=terrain_cmap,
+            colorbar=dict(x=0.0),
+            showscale=False,
+        )
+    )
+    if S is not None:
+        # Surface mesh
+        fig.add_trace(
+            go.Surface(
+                x=X,
+                y=Y,
+                z=S,
+                opacity=0.45,
+                colorscale=surf_cmap,
+                colorbar=dict(x=0.05),
+                showscale=False,
+            )
+        )
+    # 3D waypoints
+    if waypoints is not None:
+        fig.add_trace(
+            go.Scatter3d(
+                x=waypoints[:, 0],
+                y=waypoints[:, 1],
+                z=waypoints[:, 2],
+                mode="markers",
+                marker=dict(color="blue", size=5),
+            )
+        )
+
+    # calculate aspect
+    if S is not None:
+        zmax = S.max()
+    else:
+        zmax = H.max()
+
+    aspectyx = (Y.max() - Y.min()) / (X.max() - X.min())
+    aspectzx = zmax / (X.max() - X.min())
+    fig.update_layout(
+        scene_aspectmode="manual",
+        scene_aspectratio=dict(
+            x=1.0,
+            y=aspectyx,
+            z=aspectzx,
+        ),
+    )
+
+
+def line_plotly(fig, line, color="black", width=2, alpha=None):
+    if alpha is not None:
+        color = f"rgba(0,0,0,{alpha})"
+    fig.add_trace(
+        go.Scatter3d(
+            x=line[:, 0],
+            y=line[:, 1],
+            z=line[:, 2],
+            mode="lines",
+            line=dict(color=color, width=width),
+            showlegend=False,
+        ),
+    )
+
+
+def put_lines_plotly(fig, lines, costs, cmap="inferno", color="black", alpha=None):
+    if cmap is not None:
+        norm = colors.Normalize(min(costs), max(costs))
+        cmap = cm.get_cmap(cmap)
+    for line, cost in zip(lines, costs):
+        if cmap is not None:
+            color = get_colorstr(cmap(norm(cost)))
+        line_plotly(fig, line, color=color, alpha=alpha)
+
+
 if __name__ == "__main__":
     from matplotlib import pyplot as plt
     import rrt, oggen
@@ -341,3 +434,10 @@ if __name__ == "__main__":
     # fig.savefig("./figure.png", dpi=200)
 
     plt.show()
+
+
+def get_colorstr(color):
+    colorstr = "rgb(" + str(int(color[0] * 255)) + ","
+    colorstr += str(int(color[1] * 255)) + ","
+    colorstr += str(int(color[2] * 255)) + ")"
+    return colorstr

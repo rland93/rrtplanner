@@ -1,7 +1,7 @@
 import cvxpy as cp
 import numpy as np
 from inspect import signature
-from .rrt import RRTStar
+from .rrt import RRTStar, r2norm
 from collections import defaultdict
 from tqdm import tqdm
 
@@ -253,6 +253,193 @@ class SurfaceLowHeight(SurfaceBase):
         self.objectives = {"Sum height": objective}
         print(f"Sum Height = {objective}")
         return problem
+
+
+def idx2point(idx, X, Y, Z=None):
+    x = X[idx]
+    y = Y[idx]
+    if Z is not None:
+        z = Z[idx]
+        return np.array([x, y, z])
+    else:
+        return np.arraY([x, y])
+
+
+def linedraw(a, b) -> bool:
+    """Integer line draw between `a` and `b`.
+
+    Parameters
+    ----------
+    a : np.ndarray
+        (2, ) array of integer coordinates point a
+    b : np.ndarray
+        (2, ) array of integer coordinates point b
+
+    Returns
+    -------
+    np.ndarray
+        Mx2 list of line points
+    """
+    line = []
+    x0 = a[0]
+    y0 = a[1]
+    x1 = b[0]
+    y1 = b[1]
+    dx = abs(x1 - x0)
+    if x0 < x1:
+        sx = 1
+    else:
+        sx = -1
+    dy = -abs(y1 - y0)
+    if y0 < y1:
+        sy = 1
+    else:
+        sy = -1
+    err = dx + dy
+    while True:
+        line.append([x0, y0])
+        if x0 == x1 and y0 == y1:
+            break
+        else:
+            e2 = 2 * err
+            if e2 >= dy:
+                err += dy
+                x0 += sx
+            if e2 <= dx:
+                err += dx
+                y0 += sy
+    return np.array(line)
+
+
+class RRT3D(RRTStar):
+    def __init__(self, og, n, r_rewire, ogz, heightband, gap):
+        def costfn(vcosts, points, v, x):
+            if any(np.where(points[v, :] == -1, True, False)):
+                return -1
+            else:
+                return vcosts[v] + np.linalg.norm(points[v, :] - x)
+
+        self.ogz = ogz
+        self.heightband = heightband
+        self.gap = gap
+        super().__init__(og, n, r_rewire, costfn)
+        self.cost = costfn
+
+    def sample_all_free3(self):
+        """Sample points uniformly at random from the free space."""
+        x, y = self.free[np.random.choice(self.free.shape[0])]
+        z = self.ogz[x, y] + self.gap + np.random.uniform(0, self.heightband)
+        return np.array([x, y, np.ceil(z)], dtype=int)
+
+    def collisionfree(self, og, a, b) -> bool:
+        x0, y0, z0 = a
+        x1, y1, z1 = b
+        # vertical dist between points
+        zdist = z1 - z0
+        r2dist = r2norm(b - a)
+
+        dx = abs(x1 - x0)
+        if x0 < x1:
+            sx = 1
+        else:
+            sx = -1
+        dy = -abs(y1 - y0)
+        if y0 < y1:
+            sy = 1
+        else:
+            sy = -1
+        err = dx + dy
+        while True:
+            # rule out R2 collision immediately
+            if og[x0, y0] != 0:
+                return False
+            # terrain altitude at the current point
+            zmin = self.ogz[x0, y0]
+            d = r2norm(np.array([x0, y0]) - a[:2])
+            z = z0 + zdist / r2dist * d
+            if z < zmin:
+                return False
+            if x0 == x1 and y0 == y1:
+                return True
+            e2 = 2 * err
+            if e2 >= dy:
+                err += dy
+                x0 += sx
+            if e2 <= dx:
+                err += dx
+                y0 += sy
+
+    def plan(self, xstart: np.ndarray, xgoal: np.ndarray):
+        sampled = set()
+        points = np.full((self.n, 3), dtype=int, fill_value=-1)
+        vcosts = np.full((self.n,), fill_value=-1)
+        children, parents = defaultdict(list), {}
+        points[0, :] = xstart
+        vcosts[0] = 0
+        parents[0] = None
+        i, j = 0, 1
+        if self.pbar:
+            pbar = tqdm(total=self.n)
+        while i < self.n:
+            if self.pbar:
+                pbar.update(1)
+            xnew = self.sample_all_free3()
+            vnearest = self.near(points, xnew)[0]
+            xnearest = points[vnearest]
+            if (
+                self.collisionfree(self.og, xnearest, xnew)
+                and tuple(xnew) not in sampled
+            ):
+                sampled.add(tuple(xnew))
+
+                # least cost path to xnew
+                vbest = vnearest
+                cbest = self.cost(vcosts, points, vbest, xnew)
+                vnear = self.within(points, xnew, self.r_rewire)
+
+                for vn in vnear:
+                    xn = points[vn]
+                    cn = self.cost(vcosts, points, vn, xnew)
+                    if cn < cbest:
+                        if self.collisionfree(self.og, xn, xnew):
+                            vbest = vn
+                            cbest = cn
+
+                # store new point
+                vnew = j
+                points[vnew] = xnew
+                vcosts[vnew] = cbest
+                # store new edge
+                parents[vnew] = vbest
+                children[vbest].append(vnew)
+
+                # rewire tree
+                for vn in vnear:
+                    xn = points[vn]
+                    cn = vcosts[vn]
+                    cmaybe = self.cost(vcosts, points, vn, xnew)
+                    if cmaybe < cn:
+                        if self.collisionfree(self.og, xn, xnew):
+                            parent = parents[vn]
+                            if parent is not None:
+                                try:
+                                    children[parent].remove(vn)
+                                    parents[vn] = vnew
+                                    vcosts[vn] = cmaybe
+                                except ValueError:
+                                    pass
+                j += 1
+            i += 1
+        vgoal, children, parents, points, vcosts = self.go2goal(
+            vcosts,
+            points,
+            xgoal,
+            j,
+            children,
+            parents,
+        )
+        T = self.build_graph(vgoal, points, parents, vcosts)
+        return T, vgoal
 
 
 def generate_example_waypoints(

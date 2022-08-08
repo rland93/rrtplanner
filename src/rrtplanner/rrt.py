@@ -24,6 +24,25 @@ def r2norm(x):
     return sqrt(x[0] * x[0] + x[1] * x[1])
 
 
+@nb.njit(fastmath=True)
+def r2euc(a, b):
+    """compute euclidean distance between two points
+
+    Parameters
+    ----------
+    a : np.ndarray
+        shape (2, ) array
+    b : np.ndarray
+        shape (2, ) array
+
+    Returns
+    -------
+    float
+        euclidean distance between a and b
+    """
+    return sqrt((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2)
+
+
 def random_point_og(og: np.ndarray) -> np.ndarray:
     """Get a random point in free space from the occupancyGrid.
 
@@ -306,14 +325,19 @@ class RRT(object):
         tuple (int, dict, dict, np.ndarray, np.ndarray)
             tuple containing (vgoal, children, parents, points, vcosts)
         """
+        print("Attempting go2goal")
         # cost for all existing points
         costs = np.empty(vcosts.shape)
         for i in range(points.shape[0]):
             costs[i] = self.cost(vcosts, points, i, xgoal)
 
+        # # prune points
+        # self.points = points[np.where(np.any(points != -1, axis=1))]
+        # self.vcosts = vcosts[np.where(vcosts != -1)]
+
         found_goal = False
         for idx in np.argsort(costs):
-            if self.collisionfree(self.og, points[idx], xgoal):
+            if self.collisionfree(self.og, points[idx], xgoal) and costs[idx] != -1:
                 vgoal = j
                 points = np.concatenate((points, xgoal[np.newaxis, :]), axis=0)
                 vcosts = np.concatenate((vcosts, [costs[idx]]), axis=0)
@@ -322,9 +346,11 @@ class RRT(object):
                 children[idx].append(vgoal)
                 parents[vgoal] = idx
                 found_goal = True
+                print(f"Success. {parents[vgoal]} -> {vgoal}")
                 break
         if not found_goal:
             # shrink points array
+            print("Failed!")
             dists = np.linalg.norm(points - xgoal)
             vgoal = np.argmin(dists)
         return vgoal, children, parents, points, vcosts
@@ -354,14 +380,13 @@ class RRT(object):
         """
         # build graph
         T = nx.DiGraph()
-        T.add_node(vgoal, pt=points[vgoal])
         for i, p in enumerate(points):
             T.add_node(i, pt=p)
 
         for child, parent in parents.items():
             if parent is not None:
                 p1, p2 = points[parent], points[child]
-                dist = r2norm(p2 - p1)
+                dist = np.linalg.norm(p2 - p1)
                 T.add_edge(parent, child, dist=dist, cost=vcosts[child])
         return T
 
@@ -545,7 +570,12 @@ class RRTStar(RRT):
             i += 1
         # go to goal if possible
         vgoal, children, parents, points, vcosts = self.go2goal(
-            vcosts, points, xgoal, j, children, parents
+            vcosts,
+            points,
+            xgoal,
+            j,
+            children,
+            parents,
         )
         # build graph
         T = self.build_graph(vgoal, points, parents, vcosts)
